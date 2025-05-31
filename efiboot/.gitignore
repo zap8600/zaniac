@@ -1,4 +1,4 @@
-bios64.bin
-boot.o
-uefi.img
 serial.log
+main.efi
+uefi.img
+bios64.bin

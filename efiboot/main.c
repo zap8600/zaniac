@@ -134,10 +134,13 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         "    orw $3 << 9, %ax\n"
         "    mov %rax, %cr4\n"
     );
+    wstrcom1("Hello, world!\n");
+    /*
     char fwvendstr[1024] = {0};
     wcstombs(fwvendstr, systab->fwvendor, sizeof(fwvendstr));
     wstrcom1("Firmware vendor: ");
     wstrcom1(fwvendstr);
     wchcom1('\n');
+    */
     return 0;
 }
