@@ -72,38 +72,6 @@ char* numtostr(unsigned int val, unsigned int base) {
     return &buf[i + 1];
 }
 
-int wctomb(char* s, unsigned short u) {
-    int r = 0;
-    if(u < 0x80) {
-        *s = u;
-        r = 1;
-    } else if(u < 0x800) {
-        *(s + 0) = ((u >> 6) & 0x1F) | 0xC0;
-        *(s + 1) = (u & 0x3F) | 0x80;
-        r = 2;
-    } else {
-        *(s + 0) = ((u >> 12) & 0x0F) | 0xE0;
-        *(s + 1) = ((u >> 6) & 0x3F) | 0x80;
-        *(s + 2) = (u & 0x3F) | 0x80;
-        r = 3;
-    }
-    return r;
-}
-
-unsigned long int wcstombs(char* s, unsigned short* pwcs, unsigned long int n) {
-    int r;
-    char* og = s;
-    if(!s || !pwcs || !*pwcs) return 0;
-    while((*pwcs && ((unsigned long int)(s - og + 4))) < n) {
-        r = wctomb(s, *pwcs);
-        if(r < 0) return (unsigned long int)(-1);
-        pwcs++;
-        s += r;
-    }
-    *s = 0;
-    return (unsigned long int)(s - og);
-}
-
 
 // Main code
 void fizzbuzz(void) {
@@ -134,13 +102,7 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         "    orw $3 << 9, %ax\n"
         "    mov %rax, %cr4\n"
     );
-    wstrcom1("Hello, world!\n");
-    /*
-    char fwvendstr[1024] = {0};
-    wcstombs(fwvendstr, systab->fwvendor, sizeof(fwvendstr));
-    wstrcom1("Firmware vendor: ");
-    wstrcom1(fwvendstr);
-    wchcom1('\n');
-    */
+    // wstrcom1("Hello, world!\n");
+    char fwvendstr[256] = {0};
     return 0;
 }
