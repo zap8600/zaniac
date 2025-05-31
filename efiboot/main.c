@@ -7,6 +7,33 @@ typedef struct efitableheader_t {
     unsigned int reserved;
 } efitableheader_t;
 
+typedef struct efitime_t {
+    unsigned short year;
+    unsigned char month;
+    unsigned char day;
+    unsigned char hour;
+    unsigned char minute;
+    unsigned char second;
+    unsigned char pad1;
+    unsigned int nanosecond;
+    signed int timezone;
+    unsigned char daylight;
+    unsigned char pad2;
+} efitime_t;
+
+typedef struct efitimecap_t {
+    unsigned int resolution;
+    unsigned int accuracy;
+    unsigned char settozero;
+} efitimecap_t;
+
+typedef unsigned long (*efigettime_t)(efitime_t* time, efitimecap_t* cap);
+
+typedef struct efirtservices_t {
+    efitableheader_t header;
+    efigettime_t gettime;
+} efirtservices_t;
+
 typedef struct efisystemtable_t {
     efitableheader_t header;
     unsigned short* fwvendor;
@@ -17,7 +44,7 @@ typedef struct efisystemtable_t {
     void* conout;
     void* conerrhandle;
     void* stderr;
-    void* rtservices;
+    efirtservices_t* rtservices;
     void* bservices;
     unsigned long int numoftableents;
     void* conftable;
@@ -102,7 +129,13 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         "    orw $3 << 9, %ax\n"
         "    mov %rax, %cr4\n"
     );
-    // wstrcom1("Hello, world!\n");
-    char fwvendstr[256] = {0};
+    wstrcom1("Hello, world!\n");
+    efitime_t time = {0};
+    efitimecap_t timecap = {0};
+    systab->rtservices->gettime(&time, &timecap);
+    wstrcom1("The year is ");
+    char* yearstr = numtostr((unsigned long)time.year, 10);
+    wstrcom1(yearstr);
+    wchcom1('\n');
     return 0;
 }
