@@ -140,7 +140,7 @@ typedef struct efigopmode_t {
     unsigned int mode;
     efigopmodeinfo_t* info;
     unsigned long int sizeofinfo;
-    unsigned long int fbbase;
+    unsigned int* fbbase;
     unsigned long int fbsize;
 } efigopmode_t;
 
@@ -279,7 +279,9 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         wchcom1('\n');
 
         for(unsigned int x = 0; x < gop->mode->info->hres; x++) {
-            *((unsigned int*)(gop->mode->fbbase + 4 * x)) = 0xff00ff00;
+            for(unsigned int y = 0; y < gop->mode->info->vres; y++) {
+                gop->mode->fbbase[(y * gop->mode->info->pixperscanline) + x] = 0xff00ff00;
+            }
         }
     }
     return 0;
