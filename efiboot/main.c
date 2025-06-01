@@ -104,10 +104,12 @@ typedef struct efisystemtable_t {
     void* conerrhandle;
     void* stderr;
     efirtservices_t* rtservices;
-    void* bservices;
+    efibservices_t* bservices;
     unsigned long int numoftableents;
     void* conftable;
 } efisystemtable_t;
+
+#define GOPGUID {0x9042a9de, 0x23dc, 0x4a38, {0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a}}
 
 typedef enum efigoppixformat_t {
     rgbreserved,
@@ -142,9 +144,12 @@ typedef struct efigopmode_t {
     unsigned long int fbsize;
 } efigopmode_t;
 
+typedef unsigned long int (*efiquerymode_t)(void* this, unsigned int modenum, unsigned long int* sizeofinfo, efigopmodeinfo_t** info);
+typedef unsigned long int (*efisetmode_t)(void* this, unsigned int modenum);
+
 typedef struct efigop_t {
-    void* querymode;
-    void* setmode;
+    efiquerymode_t querymode;
+    efisetmode_t setmode;
     void* blt;
     efigopmode_t* mode;
 } efigop_t;
@@ -181,6 +186,8 @@ void wchcom1(const char c) {
 
 
 // Support
+#define ERROR(a) (((signed long int)a) < 0)
+
 void* memset(void* s, int c, unsigned long int n) {
     unsigned char* b = (unsigned char*)s;
     for(unsigned long int i = 0; i < n; i++) {
@@ -229,7 +236,11 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         "    orw $3 << 9, %ax\n"
         "    mov %rax, %cr4\n"
     );
+
+    // COM1 test
     wstrcom1("Hello, world!\n");
+
+    // Test for accessing UEFI functions
     efitime_t time = {0};
     efitimecap_t timecap = {0};
     systab->rtservices->gettime(&time, &timecap);
@@ -237,5 +248,14 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     char* yearstr = numtostr((unsigned long int)time.year, 10);
     wstrcom1(yearstr);
     wchcom1('\n');
+
+    // Get GOP data
+    efigop_t* gop = (void*)0;
+    efiguid_t gopguid = GOPGUID;
+    unsigned long int status = 0;
+    status = systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
+    if(!ERROR(status) && gop) {
+        status = gop->setmode(gop, 0);
+    }
     return 0;
 }
