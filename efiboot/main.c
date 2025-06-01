@@ -256,6 +256,10 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     status = systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
     if(!ERROR(status) && gop) {
         status = gop->setmode(gop, 0);
+        if(ERROR(status)) {
+            wstrcom1("Failed to set video mode\n");
+            return 0;
+        }
     }
     return 0;
 }
