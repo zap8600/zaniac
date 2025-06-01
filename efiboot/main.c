@@ -260,6 +260,27 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
             wstrcom1("Failed to set video mode\n");
             return 0;
         }
+        char* datastr = (void*)0;
+        datastr = numtostr(gop->mode->info->hres, 10);
+        wstrcom1("Horizontal resolution: ");
+        wstrcom1(datastr);
+        wchcom1('\n');
+        datastr = numtostr(gop->mode->info->vres, 10);
+        wstrcom1("Vertical resolution: ");
+        wstrcom1(datastr);
+        wchcom1('\n');
+        datastr = numtostr(gop->mode->info->pixperscanline, 10);
+        wstrcom1("Pixels per scan line: ");
+        wstrcom1(datastr);
+        wchcom1('\n');
+        datastr = numtostr(gop->mode->info->pixformat, 10);
+        wstrcom1("Pixel format: ");
+        wstrcom1(datastr);
+        wchcom1('\n');
+
+        for(unsigned int x = 0; x < gop->mode->info->hres; x++) {
+            *((unsigned int*)(gop->mode->fbbase + 4 * x)) = 0xff00ff00;
+        }
     }
     return 0;
 }
