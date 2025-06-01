@@ -283,6 +283,7 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
                 gop->mode->fbbase[(y * gop->mode->info->pixperscanline) + x] = 0xff00ff00;
             }
         }
+        while(1) {}
     }
     return 0;
 }
