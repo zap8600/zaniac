@@ -27,12 +27,71 @@ typedef struct efitimecap_t {
     unsigned char settozero;
 } efitimecap_t;
 
-typedef unsigned long (*efigettime_t)(efitime_t* time, efitimecap_t* cap);
+typedef unsigned long int (*efigettime_t)(efitime_t* time, efitimecap_t* cap);
 
 typedef struct efirtservices_t {
     efitableheader_t header;
     efigettime_t gettime;
 } efirtservices_t;
+
+typedef struct efiguid_t {
+    unsigned int data1;
+    unsigned short data2;
+    unsigned short data3;
+    unsigned char data4[8];
+} efiguid_t;
+
+typedef unsigned long int (*efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
+
+typedef struct efibservices_t {
+    efitableheader_t header;
+    void* raisetpl;
+    void* restoretpl;
+
+    void* allocatepages;
+    void* freepages;
+    void* getmemorymap;
+    void* allocatepool;
+    void* freepool;
+
+    void* eventnotify;
+    void* createevent;
+    void* settimer;
+    void* waitforevent;
+    void* signalevent;
+    void* closeevent;
+
+    void* installprotif;
+    void* reinstallprotif;
+    void* uninstallprotif;
+    void* handleprot;
+    void* pchandleprot;
+    void* registerprotnot;
+    void* lochandle;
+    void* locdevpath;
+    void* installconftable;
+
+    void* loadimage;
+    void* startimage;
+    void* exit;
+    void* unloadimage;
+    void* exitbootservices;
+
+    void*getnexthimonocnt;
+    void* stall;
+    void* setwatchdogtimer;
+
+    void* connectcont;
+    void* disconnectcont;
+
+    void* openprot;
+    void* closeprot;
+    void* openprotinfo;
+
+    void* protsperhandle;
+    void* lochanlebuf;
+    efilocprot_t locprot;
+} efibservices_t;
 
 typedef struct efisystemtable_t {
     efitableheader_t header;
@@ -49,6 +108,47 @@ typedef struct efisystemtable_t {
     unsigned long int numoftableents;
     void* conftable;
 } efisystemtable_t;
+
+typedef enum efigoppixformat_t {
+    rgbreserved,
+    bgrreserved,
+    bitmask,
+    bltonly,
+    formatmax
+} efigoppixformat_t;
+
+typedef struct efigoppixbitmask_t {
+    unsigned int rmask;
+    unsigned int gmask;
+    unsigned int bluemask;
+    unsigned int reservedmask;
+} efigoppixbitmask_t;
+
+typedef struct efigopmodeinfo_t {
+    unsigned int version;
+    unsigned int hres;
+    unsigned int vres;
+    efigoppixformat_t pixformat;
+    efigoppixbitmask_t pixinfo;
+    unsigned int pixperscanline;
+} efigopmodeinfo_t;
+
+typedef struct efigopmode_t {
+    unsigned int maxmode;
+    unsigned int mode;
+    efigopmodeinfo_t* info;
+    unsigned long int sizeofinfo;
+    unsigned long int fbbase;
+    unsigned long int fbsize;
+} efigopmode_t;
+
+typedef struct efigop_t {
+    void* querymode;
+    void* setmode;
+    void* blt;
+    efigopmode_t* mode;
+} efigop_t;
+
 
 // I/O
 #define COM1 0x3f8
@@ -134,7 +234,7 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     efitimecap_t timecap = {0};
     systab->rtservices->gettime(&time, &timecap);
     wstrcom1("The year is ");
-    char* yearstr = numtostr((unsigned long)time.year, 10);
+    char* yearstr = numtostr((unsigned long int)time.year, 10);
     wstrcom1(yearstr);
     wchcom1('\n');
     return 0;
