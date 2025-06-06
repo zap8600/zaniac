@@ -1,3 +1,7 @@
+// Font
+#include "VGA8.h"
+
+
 // EFI system table data
 typedef struct efitableheader_t {
     unsigned long int signature;
@@ -278,10 +282,25 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         wstrcom1(datastr);
         wchcom1('\n');
 
-        for(unsigned int x = 0; x < gop->mode->info->hres; x++) {
-            for(unsigned int y = 0; y < gop->mode->info->vres; y++) {
-                gop->mode->fbbase[(y * gop->mode->info->pixperscanline) + x] = 0xff00ff00;
+        unsigned int cx = 0;
+        unsigned int cy = 0;
+        for(unsigned int i = 0; i < VGA8_F16_len; i += 128) {
+            if((gop->mode->info->hres - cx) < 8) {
+                cx = 0;
+                cy += 16;
             }
+            const unsigned char bitmask = 0x80;
+            for(unsigned int cc = 0; cc < 16; cc++) {
+                const unsigned char curb = VGA8_F16[i + cc];
+                for(unsigned int cb = 0; cb < 8; cb++) {
+                    if((curb & (bitmask >> cb))) {
+                        gop->mode->fbbase[((cy + cc) * gop->mode->info->pixperscanline) + (cx + cb)] = 0xffffffff;
+                    } else {
+                        gop->mode->fbbase[((cy + cc) * gop->mode->info->pixperscanline) + (cx + cb)] = 0x00000000;
+                    }
+                }
+            }
+            cx += 8;
         }
         while(1) {}
     }
