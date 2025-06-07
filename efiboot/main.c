@@ -346,84 +346,13 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     wstrscr(timevalstr);
     wchscr('\n');
 
-    //while(1) {
-        unsigned long int index = 0;
-        efiinputkey_t inkey = {0};
-        unsigned long int status = systab->bservices->waitforevent(1, &(systab->conin->event), &index);
-        //if(ERROR(status)) {
-            char* errorstatusstr = numtostr(status, 10);
-            wstrcom1("Error: ");
-            wstrcom1(errorstatusstr);
-            wchcom1('\n');
-            //break;
-        //}
-        //wstrcom1("Got key!\n");
-        /*
-        systab->conin->readkeystroke(systab->conin, &inkey);
-        wstrcom1("Got key\n");
-        //wchscr((char)(inkey.unicodech));
-        wchcom1((char)(inkey.unicodech));
-        */
-    //}
-
-    wstrcom1("Left main loop, halting...\n");
-    while(1) {}
-
-    /*
-    // COM1 test
-    wstrcom1("Hello, world!\n");
-
-    // Get GOP data
-    efigop_t* gop = (void*)0;
-    efiguid_t gopguid = GOPGUID;
-    unsigned long int status = 0;
-    status = systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
-    if(!ERROR(status) && gop) {
-        status = gop->setmode(gop, 0);
-        if(ERROR(status)) {
-            wstrcom1("Failed to set video mode\n");
-            return 0;
-        }
-        char* datastr = (void*)0;
-        datastr = numtostr(gop->mode->info->hres, 10);
-        wstrcom1("Horizontal resolution: ");
-        wstrcom1(datastr);
-        wchcom1('\n');
-        datastr = numtostr(gop->mode->info->vres, 10);
-        wstrcom1("Vertical resolution: ");
-        wstrcom1(datastr);
-        wchcom1('\n');
-        datastr = numtostr(gop->mode->info->pixperscanline, 10);
-        wstrcom1("Pixels per scan line: ");
-        wstrcom1(datastr);
-        wchcom1('\n');
-        datastr = numtostr(gop->mode->info->pixformat, 10);
-        wstrcom1("Pixel format: ");
-        wstrcom1(datastr);
-        wchcom1('\n');
-
-        unsigned int cx = 0;
-        unsigned int cy = 0;
-        for(unsigned int i = 0; i < VGA8_F16_len; i += 16) {
-            if(((gop->mode->info->hres - 1) - cx) < 8) {
-                cx = 0;
-                cy += 16;
-            }
-            const unsigned char bitmask = 0x80;
-            for(unsigned int cc = 0; cc < 16; cc++) {
-                const unsigned char curb = VGA8_F16[i + cc];
-                for(unsigned int cb = 0; cb < 8; cb++) {
-                    if((curb & (bitmask >> cb))) {
-                        gop->mode->fbbase[((cy + cc) * gop->mode->info->pixperscanline) + (cx + cb)] = 0xffffffff;
-                    } else {
-                        gop->mode->fbbase[((cy + cc) * gop->mode->info->pixperscanline) + (cx + cb)] = 0x00000000;
-                    }
-                }
-            }
-            cx += 8;
-        }
-        while(1) {}
+    while(1) {
+        unsigned long int status = 0;
+        efiinputkey_t key = {0};
+        status = systab->conin->readkeystroke(systab->conin, &key);
+        if(status == 6) continue;
+        wchscr((char)(key.unicodech));
     }
-    */
+
     return 0;
 }
