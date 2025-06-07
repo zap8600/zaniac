@@ -45,6 +45,8 @@ typedef struct efiguid_t {
     unsigned char data4[8];
 } efiguid_t;
 
+
+typedef unsigned long int (*efiwaitforevent_t)(unsigned long int numofevents, void** event, unsigned long int* index);
 typedef unsigned long int (*efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
 
 typedef struct efibservices_t {
@@ -61,7 +63,7 @@ typedef struct efibservices_t {
     void* eventnotify;
     void* createevent;
     void* settimer;
-    void* waitforevent;
+    efiwaitforevent_t waitforevent;
     void* signalevent;
     void* closeevent;
 
@@ -95,14 +97,31 @@ typedef struct efibservices_t {
     void* protsperhandle;
     void* lochanlebuf;
     efilocprot_t locprot;
+    void* installmultipleprotif;
+    void* uninstallmultipleprotif;
+    void* caluclatecrc32;
 } efibservices_t;
+
+typedef struct efiinputkey_t {
+    unsigned short scancode;
+    unsigned short unicodech;
+} efiinputkey_t;
+
+typedef unsigned long int (*efireset_t)(void* this, unsigned char extendedverification);
+typedef unsigned long int (*efireadkeystroke_t)(void* this, efiinputkey_t* key);
+
+typedef struct efisimpletextinput_t {
+    efireset_t reset;
+    efireadkeystroke_t readkeystroke;
+    void* event;
+} efisimpletextinput_t;
 
 typedef struct efisystemtable_t {
     efitableheader_t header;
     unsigned short* fwvendor;
     unsigned int fwrevision;
     void* coninhandle;
-    void* conin;
+    efisimpletextinput_t* conin;
     void* conouthandle;
     void* conout;
     void* conerrhandle;
@@ -175,17 +194,58 @@ static inline unsigned char inb(unsigned short port) {
     return ret;
 }
 
-void wstrcom1(const char* s) {
-    char c = 0;
-    while((c = *s++)) {
-        while(!(inb(COM1 + 5) & 0x20)) {}
-        outb(COM1, c);
-    }
-}
-
 void wchcom1(const char c) {
     while(!(inb(COM1 + 5) & 0x20)) {}
     outb(COM1, c);
+}
+
+void wstrcom1(const char* s) {
+    char c = 0;
+    while((c = *s++)) {
+        wchcom1(c);
+    }
+}
+
+
+//Screen
+efigop_t* gop = (void*)0;
+void initdisplay(efisystemtable_t* systab) {
+    // TODO: Add error handling
+    efiguid_t gopguid = GOPGUID;
+    systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
+    gop->setmode(gop, 0);
+}
+
+unsigned int cx = 0;
+unsigned int cy = 0;
+void wchscr(const char c) {
+    if(c == '\n') {
+        cx = 0;
+        cy += 16;
+    } else {
+        if((gop->mode->info->hres - cx) < 8) {
+            cx = 0;
+            cy += 16;
+        }
+        for(unsigned int cb = 0; cb < 16; cb++) {
+            const unsigned char ch = VGA8_F16[(c * 16) + cb];
+            for(unsigned char shift = 0; shift < 8; shift++) {
+                if(ch & (0x80 >> shift)) {
+                    gop->mode->fbbase[((cy + cb) * gop->mode->info->pixperscanline) + (cx + shift)] = 0xffffffff;
+                } else {
+                    gop->mode->fbbase[((cy + cb) * gop->mode->info->pixperscanline) + (cx + shift)] = 0x00000000;
+                }
+            }
+        }
+        cx += 8;
+    }
+}
+
+void wstrscr(const char* s) {
+    char c = 0;
+    while((c = *s++)) {
+        wchscr(c);
+    }
 }
 
 
@@ -200,35 +260,53 @@ void* memset(void* s, int c, unsigned long int n) {
     return s;
 }
 
+unsigned int abs(signed int num) {
+    if(num < 0) {
+        return (unsigned int)(-num);
+    } else {
+        return (unsigned int)num;
+    }
+}
 
 char* numtostr(unsigned int val, unsigned int base) {
+    unsigned char neg = 0;
+    if(((signed int)val) < 0) {
+        neg = 1;
+        val = abs(val);
+    }
     static char buf[32] = {0};
+    if(!val) {
+        buf[30] = '0';
+        return &buf[30];
+    }
     unsigned int i = 30;
     for(; val && i; i--, val /= base) {
         buf[i] = "0123456789abcdef"[val % base];
     }
-    return &buf[i + 1];
+    if(neg) {
+        buf[i] = '-';
+        return &buf[i];
+    } else {
+        return &buf[i + 1];
+    }
 }
 
 
 // Main code
-void fizzbuzz(void) {
-    wstrcom1("Fizz Buzz for 100 numbers:\n");
-    for(unsigned int i = 1; i <= 100; i++) {
-        if(!(i % 3)) {
-            if(!(i % 5)) {
-                wstrcom1("fizz-buzz");
-            } else {
-                wstrcom1("fizz");
-            }
-        } else if(!(i % 5)) {
-            wstrcom1("buzz");
-        } else {
-            wstrcom1(numtostr(i, 10));
-        }
-        wchcom1('\n');
-    }
-}
+const char *months[] = {
+    "January",
+    "Febuary",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+};
 
 unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     // Set up SSE
@@ -241,17 +319,59 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         "    mov %rax, %cr4\n"
     );
 
-    // COM1 test
-    wstrcom1("Hello, world!\n");
+    // Display test
+    initdisplay(systab);
+    wstrscr("Hello, world!\n");
 
+    wstrscr("Time of boot: ");
     // Test for accessing UEFI functions
     efitime_t time = {0};
     efitimecap_t timecap = {0};
     systab->rtservices->gettime(&time, &timecap);
-    wstrcom1("The year is ");
-    char* yearstr = numtostr((unsigned long int)time.year, 10);
-    wstrcom1(yearstr);
-    wchcom1('\n');
+    wstrscr(months[time.month - 1]);
+    wchscr(' ');
+    char* timevalstr = numtostr(time.day, 10);
+    wstrscr(timevalstr);
+    wstrscr(", ");
+    timevalstr = numtostr(time.year, 10);
+    wstrscr(timevalstr);
+    wstrscr(" at ");
+    timevalstr = numtostr(time.hour, 10);
+    wstrscr(timevalstr);
+    wchscr(':');
+    timevalstr = numtostr(time.minute, 10);
+    wstrscr(timevalstr);
+    wchscr(':');
+    timevalstr = numtostr(time.second, 10);
+    wstrscr(timevalstr);
+    wchscr('\n');
+
+    //while(1) {
+        unsigned long int index = 0;
+        efiinputkey_t inkey = {0};
+        unsigned long int status = systab->bservices->waitforevent(1, &(systab->conin->event), &index);
+        //if(ERROR(status)) {
+            char* errorstatusstr = numtostr(status, 10);
+            wstrcom1("Error: ");
+            wstrcom1(errorstatusstr);
+            wchcom1('\n');
+            //break;
+        //}
+        //wstrcom1("Got key!\n");
+        /*
+        systab->conin->readkeystroke(systab->conin, &inkey);
+        wstrcom1("Got key\n");
+        //wchscr((char)(inkey.unicodech));
+        wchcom1((char)(inkey.unicodech));
+        */
+    //}
+
+    wstrcom1("Left main loop, halting...\n");
+    while(1) {}
+
+    /*
+    // COM1 test
+    wstrcom1("Hello, world!\n");
 
     // Get GOP data
     efigop_t* gop = (void*)0;
@@ -284,8 +404,8 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
 
         unsigned int cx = 0;
         unsigned int cy = 0;
-        for(unsigned int i = 0; i < VGA8_F16_len; i += 128) {
-            if((gop->mode->info->hres - cx) < 8) {
+        for(unsigned int i = 0; i < VGA8_F16_len; i += 16) {
+            if(((gop->mode->info->hres - 1) - cx) < 8) {
                 cx = 0;
                 cy += 16;
             }
@@ -304,5 +424,6 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         }
         while(1) {}
     }
+    */
     return 0;
 }
