@@ -2,7 +2,7 @@
 #include "VGA8.h"
 
 
-// EFI system table data
+// EFI data
 typedef struct efitableheader_t {
     unsigned long int signature;
     unsigned int revision;
@@ -45,7 +45,28 @@ typedef struct efiguid_t {
     unsigned char data4[8];
 } efiguid_t;
 
+typedef enum efimemtype_t {
+    efireservedmem,
+    efiloadercode,
+    efiloaderdata,
+    efibscode,
+    efibsdata,
+    efirtscode,
+    efirtsdata,
+    eficonvetmem,
+    efiunusablemem,
+    efiacpireclaimmem,
+    efiacpimemnvs,
+    efimemmappedio,
+    efimemmappedioport,
+    efipalcode,
+    efipersistmem,
+    efiunacceptedmem,
+    efimaxmemtype
+} efimemtype_t;
 
+typedef unsigned long int (*efiallocpool_t)(efimemtype_t memtype, unsigned long int size, void** ret);
+typedef unsigned long int (*efifreepool_t)(void* buf);
 typedef unsigned long int (*efiwaitforevent_t)(unsigned long int numofevents, void** event, unsigned long int* index);
 typedef unsigned long int (*efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
 
@@ -57,8 +78,8 @@ typedef struct efibservices_t {
     void* allocatepages;
     void* freepages;
     void* getmemorymap;
-    void* allocatepool;
-    void* freepool;
+    efiallocpool_t allocatepool;
+    efifreepool_t freepool;
 
     void* eventnotify;
     void* createevent;
@@ -249,9 +270,23 @@ void wstrscr(const char* s) {
 }
 
 
-// Support
-#define ERROR(a) (((signed long int)a) < 0)
+// Keyboard
+efisimpletextinput_t* input = (void*)0;
+char getcharacter(unsigned char block) {
+    unsigned long int status = 0;
+    efiinputkey_t key = {0};
+    if(block) {
+        // The WaitForKey event doesn't seem to be properly set up on all platforms
+        while((status = input->readkeystroke(input, &key)) == 6) {}
+    }
+    // Convert Enter key (13) to \n (10)
+    if(key.unicodech == 13) {
+        return '\n';
+    }
+    return (char)(key.unicodech);
+}
 
+// Support
 void* memset(void* s, int c, unsigned long int n) {
     unsigned char* b = (unsigned char*)s;
     for(unsigned long int i = 0; i < n; i++) {
@@ -319,9 +354,17 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         "    mov %rax, %cr4\n"
     );
 
-    // Display test
+    // Setup
     initdisplay(systab);
     wstrscr("Hello, world!\n");
+    input = systab->conin;
+
+    wstrscr("Firmware Vendor: ");
+    unsigned short wc = 0;
+    for(unsigned long int i = 0; (wc = systab->fwvendor[i]); i++) {
+        wchscr((char)wc);
+    }
+    wchscr('\n');
 
     wstrscr("Time of boot: ");
     // Test for accessing UEFI functions
@@ -347,11 +390,8 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     wchscr('\n');
 
     while(1) {
-        unsigned long int status = 0;
-        efiinputkey_t key = {0};
-        status = systab->conin->readkeystroke(systab->conin, &key);
-        if(status == 6) continue;
-        wchscr((char)(key.unicodech));
+        char c = getcharacter(1);
+        wchscr(c);
     }
 
     return 0;
