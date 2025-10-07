@@ -1,7 +1,6 @@
 // Font
 #include "VGA8.h"
 
-
 // EFI data
 typedef struct efitableheader_t {
     unsigned long int signature;
@@ -65,10 +64,22 @@ typedef enum efimemtype_t {
     efimaxmemtype
 } efimemtype_t;
 
+typedef struct efimemdesc_t {
+    unsigned int type;
+    unsigned int pad;
+    unsigned long int physicalstart;
+    unsigned long int virtualstart;
+    unsigned long int numofpages;
+    unsigned long int attr;
+} efimemdesc_t;
+
+typedef unsigned long int (*efihandleprot_t)(void* handle, efiguid_t* prot, void** interface);
 typedef unsigned long int (*efiallocpool_t)(efimemtype_t memtype, unsigned long int size, void** ret);
 typedef unsigned long int (*efifreepool_t)(void* buf);
-typedef unsigned long int (*efiwaitforevent_t)(unsigned long int numofevents, void** event, unsigned long int* index);
+//typedef unsigned long int (*efiwaitforevent_t)(unsigned long int numofevents, void** event, unsigned long int* index);
 typedef unsigned long int (*efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
+typedef unsigned long int (*efigetmemmap_t)(unsigned long int* memmapsize, efimemdesc_t* memmap, unsigned long int* mapkey, unsigned long int* descsize, unsigned int* descversion);
+typedef unsigned long int (*efiexitbootservices_t)(void* imghandle, unsigned long int mapkey);
 
 typedef struct efibservices_t {
     efitableheader_t header;
@@ -77,21 +88,21 @@ typedef struct efibservices_t {
 
     void* allocatepages;
     void* freepages;
-    void* getmemorymap;
+    efigetmemmap_t getmemorymap;
     efiallocpool_t allocatepool;
     efifreepool_t freepool;
 
     void* eventnotify;
     void* createevent;
     void* settimer;
-    efiwaitforevent_t waitforevent;
+    void* waitforevent;
     void* signalevent;
     void* closeevent;
 
     void* installprotif;
     void* reinstallprotif;
     void* uninstallprotif;
-    void* handleprot;
+    efihandleprot_t handleprot;
     void* pchandleprot;
     void* registerprotnot;
     void* lochandle;
@@ -102,7 +113,7 @@ typedef struct efibservices_t {
     void* startimage;
     void* exit;
     void* unloadimage;
-    void* exitbootservices;
+    efiexitbootservices_t exitbootservices;
 
     void*getnexthimonocnt;
     void* stall;
@@ -198,8 +209,76 @@ typedef struct efigop_t {
     efigopmode_t* mode;
 } efigop_t;
 
+typedef struct efidevpath_t {
+    unsigned char type;
+    unsigned char subtype;
+    unsigned char length[2];
+} efidevpath_t;
+
+#define LIPGUID {0x5B1B31A1, 0x9562, 0x11d2, {0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B}}
+
+typedef struct efiloadedimageprot_t {
+    unsigned int revision;
+    void* parenthandle;
+    void* systab;
+    void* devhanle;
+    efidevpath_t* filepath;
+    void* reserved;
+    unsigned int loadoptsize;
+    void* loadopt;
+    void* imgbase;
+    unsigned long int imgsize;
+    efimemtype_t imgcodetype;
+    efimemtype_t imgdatatype;
+} efiloadedimageprot_t;
+
+#define EFIFILEINFOGUID {0x9576e92, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}}
+
+typedef struct efifileinfo_t {
+    unsigned long int size;
+    unsigned long int filesize;
+    unsigned long int physicalsize;
+    efitime_t createtime;
+    efitime_t lastaccesstime;
+    efitime_t modificationtime;
+    unsigned long int attr;
+    unsigned short int filename[262];
+} efifileinfo_t;
+
+typedef struct efifilehandle_t efifilehandle_t;
+
+typedef unsigned long int (*efifileopen_t)(efifilehandle_t* file, efifilehandle_t** newhandle, unsigned short int* filename, unsigned long int openmode, unsigned long int attr);
+typedef unsigned long int (*efifileclose_t)(efifilehandle_t* file);
+typedef unsigned long int (*efifileread_t)(efifilehandle_t* file, unsigned long int* bufsize, void* buf);
+typedef unsigned long int (*efigetinfo_t)(efifilehandle_t* file, efiguid_t* infotype, unsigned long int* bufsize, void* buf);
+
+typedef struct efifilehandle_t {
+    unsigned long int revision;
+    efifileopen_t open;
+    efifileclose_t close;
+    void* delete;
+    efifileread_t read;
+    void* write;
+    void* getpos;
+    void* setpos;
+    efigetinfo_t getinfo;
+    void* setinfo;
+    void* flush;
+} efifilehandle_t;
+
+#define SFSGUID {0x964e5b22, 0x6459, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}}
+
+typedef unsigned long int (*efiopenvolume_t)(void* this, efifilehandle_t** root);
+
+typedef struct efisfsprot_t {
+    unsigned long int revision;
+    efiopenvolume_t openvolume;
+} efisfsprot_t;
+
+#define EFIFILEMODEREAD 0x1
 
 // I/O
+/*
 #define COM1 0x3f8
 
 static inline void outb(unsigned short port, unsigned char val) {
@@ -226,9 +305,11 @@ void wstrcom1(const char* s) {
         wchcom1(c);
     }
 }
+*/
 
 
 //Screen
+/*
 efigop_t* gop = (void*)0;
 void initdisplay(efisystemtable_t* systab) {
     // TODO: Add error handling
@@ -236,7 +317,9 @@ void initdisplay(efisystemtable_t* systab) {
     systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
     gop->setmode(gop, 0);
 }
+*/
 
+/*
 unsigned int cx = 0;
 unsigned int cy = 0;
 void wchscr(const char c) {
@@ -268,9 +351,10 @@ void wstrscr(const char* s) {
         wchscr(c);
     }
 }
-
+*/
 
 // Keyboard
+/*
 efisimpletextinput_t* input = (void*)0;
 char getcharacter(unsigned char block) {
     unsigned long int status = 0;
@@ -285,6 +369,7 @@ char getcharacter(unsigned char block) {
     }
     return (char)(key.unicodech);
 }
+*/
 
 // Support
 void* memset(void* s, int c, unsigned long int n) {
@@ -295,6 +380,16 @@ void* memset(void* s, int c, unsigned long int n) {
     return s;
 }
 
+void* memcpy(void* d, void* s, unsigned long int n) {
+    unsigned char* dst = (unsigned char*)d;
+    const unsigned char* src = (const unsigned char*)s;
+    for(unsigned long int i = 0; i < n; i++) {
+        dst[i] = src[i];
+    }
+    return d;
+}
+
+/*
 unsigned int abs(signed int num) {
     if(num < 0) {
         return (unsigned int)(-num);
@@ -325,9 +420,10 @@ char* numtostr(unsigned int val, unsigned int base) {
         return &buf[i + 1];
     }
 }
-
+*/
 
 // Main code
+/*
 const char *months[] = {
     "January",
     "Febuary",
@@ -342,6 +438,39 @@ const char *months[] = {
     "November",
     "December"
 };
+*/
+#define PTLOAD 1
+
+typedef struct elf64ehdr_t {
+    unsigned char ident[16];
+    unsigned short int type;
+    unsigned short int machine;
+    unsigned int version;
+    unsigned long int entry;
+    unsigned long int phoff;
+    unsigned long int shoff;
+    unsigned int flags;
+    unsigned short int ehsize;
+    unsigned short int phentsize;
+    unsigned short int phnum;
+    unsigned short int shentsize;
+    unsigned short int shnum;
+    unsigned short int shstrndx;
+} elf64ehdr_t;
+
+typedef struct elf64phdr_t {
+    unsigned int ptype;
+    unsigned int flags;
+    unsigned long int offset;
+    unsigned long int vaddr;
+    unsigned long int paddr;
+    unsigned long int filesize;
+    unsigned long int memsize;
+    unsigned long int align;
+} elf64phdr_t;
+
+const unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
+efifilehandle_t filedata = {0};
 
 unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     // Set up SSE
@@ -355,7 +484,62 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     );
 
     // Setup
-    initdisplay(systab);
+
+    efiloadedimageprot_t* lip = (void*)0;
+    efiguid_t lipguid = LIPGUID;
+    systab->bservices->handleprot(image, &lipguid, (void**)lip);
+
+    efifilehandle_t* rootdir = (void*)0;
+    efisfsprot_t* sfs = (void*)0;
+    efiguid_t sfsguid = SFSGUID;
+    systab->bservices->handleprot(lip->devhanle, &sfsguid, (void**)&sfs);
+    rootdir = sfs->openvolume(sfs, &rootdir);
+
+    efifilehandle_t* kernelfile = &filedata;
+    rootdir->open(rootdir, &kernelfile, kernelfilename, EFIFILEMODEREAD, 0);
+
+    efifileinfo_t kernelfileinfo;
+    efiguid_t fileinfoguid = EFIFILEINFOGUID;
+    unsigned long int fileinfosize = sizeof(kernelfileinfo);
+    kernelfile->getinfo(kernelfile, &fileinfoguid, &fileinfosize, &kernelfileinfo);
+
+    void* kerneldata = (void*)0;
+    systab->bservices->allocatepool(lip->imgdatatype, kernelfileinfo.filesize, &kerneldata);
+    kernelfile->read(kernelfile, &(kernelfileinfo.filesize), kerneldata);
+    kernelfile->close(kernelfile);
+
+    efigop_t* gop = (void*)0;
+    efiguid_t gopguid = GOPGUID;
+    systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
+    gop->setmode(gop, 0);
+
+    elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
+    elf64phdr_t *phdr = (void*)0;
+    int i;
+    for(phdr = (elf64phdr_t*)(kerneldata + elf->phoff), i = 0; i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
+        if(phdr->ptype == PTLOAD) {
+            memcpy((void*)(phdr->vaddr), kerneldata + phdr->offset, phdr->filesize);
+            memset((void*)(phdr->paddr + phdr->filesize), 0, phdr->memsize - phdr->filesize);
+        }
+    }
+
+    void* entry = elf->entry;
+
+    systab->bservices->freepool(kerneldata);
+
+    efimemdesc_t* memmap = (void*)0;
+    unsigned long int count = 3; // Three tries
+    unsigned long int memmapsize = 0;
+    unsigned long int mapkey = 0;
+    unsigned long int descsize = 0;
+    unsigned long int status = 0;
+    while(count--) {
+        status = systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, (void*)0);
+        if(status != (0x8000000000000000 | (unsigned int)(5))) break;
+        status = systab->bservices->exitbootservices(image, mapkey);
+    }
+
+    /*
     wstrscr("Hello, world!\n");
     input = systab->conin;
 
@@ -393,6 +577,7 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         char c = getcharacter(1);
         wchscr(c);
     }
+    */
 
     return 0;
 }
