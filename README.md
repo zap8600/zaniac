@@ -1,2 +1,2 @@
-# unix
-A UNIX kernel
+# zaniacos
+My operating system
