@@ -1,2 +1,2 @@
-# zaniacos
+# zaniac
 My operating system
