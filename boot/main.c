@@ -1,5 +1,8 @@
 // Font
-#include "VGA8.h"
+// #include "VGA8.h"
+
+// Boot params
+#include "../kernel/sysparam.h"
 
 // EFI data
 typedef struct efitableheader_t {
@@ -372,6 +375,9 @@ char getcharacter(unsigned char block) {
 */
 
 // Support
+
+#define EFIERROR(a) (((signed long int) a) < 0)
+
 void* memset(void* s, int c, unsigned long int n) {
     unsigned char* b = (unsigned char*)s;
     for(unsigned long int i = 0; i < n; i++) {
@@ -513,6 +519,12 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
     gop->setmode(gop, 0);
 
+    sysparam_t bootparams = {0};
+    bootparams.framebuffer = gop->mode->fbbase;
+    bootparams.hres = gop->mode->info->hres;
+    bootparams.vres = gop->mode->info->vres;
+    bootparams.pitch = gop->mode->infor->pixperscanline;
+
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
     int i;
@@ -538,6 +550,8 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         if(status != (0x8000000000000000 | (unsigned int)(5))) break;
         status = systab->bservices->exitbootservices(image, mapkey);
     }
+
+    (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
 
     /*
     wstrscr("Hello, world!\n");
