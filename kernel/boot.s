@@ -7,7 +7,7 @@ stack_top:
 .section .text
 .global _start
 .type _start,@function
-.start_:
+_start:
     mov $stack_top, %rsp;
     call kernel_main
     cli

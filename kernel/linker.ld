@@ -1,6 +1,7 @@
+OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(_start)
 SECTIONS {
-    . = 2M
+    . = 2M;
     .text BLOCK(4K) : ALIGN(4K)
     {
         *(.text)

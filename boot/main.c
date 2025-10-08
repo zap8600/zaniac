@@ -6,7 +6,7 @@
 
 // EFI data
 typedef struct efitableheader_t {
-    unsigned long int signature;
+    unsigned long long signature;
     unsigned int revision;
     unsigned int headersize;
     unsigned int crc32;
@@ -33,7 +33,7 @@ typedef struct efitimecap_t {
     unsigned char settozero;
 } efitimecap_t;
 
-typedef unsigned long int (*efigettime_t)(efitime_t* time, efitimecap_t* cap);
+typedef unsigned long long (*efigettime_t)(efitime_t* time, efitimecap_t* cap);
 
 typedef struct efirtservices_t {
     efitableheader_t header;
@@ -70,19 +70,19 @@ typedef enum efimemtype_t {
 typedef struct efimemdesc_t {
     unsigned int type;
     unsigned int pad;
-    unsigned long int physicalstart;
-    unsigned long int virtualstart;
-    unsigned long int numofpages;
-    unsigned long int attr;
+    unsigned long long physicalstart;
+    unsigned long long virtualstart;
+    unsigned long long numofpages;
+    unsigned long long attr;
 } efimemdesc_t;
 
-typedef unsigned long int (*efihandleprot_t)(void* handle, efiguid_t* prot, void** interface);
-typedef unsigned long int (*efiallocpool_t)(efimemtype_t memtype, unsigned long int size, void** ret);
-typedef unsigned long int (*efifreepool_t)(void* buf);
-//typedef unsigned long int (*efiwaitforevent_t)(unsigned long int numofevents, void** event, unsigned long int* index);
-typedef unsigned long int (*efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
-typedef unsigned long int (*efigetmemmap_t)(unsigned long int* memmapsize, efimemdesc_t* memmap, unsigned long int* mapkey, unsigned long int* descsize, unsigned int* descversion);
-typedef unsigned long int (*efiexitbootservices_t)(void* imghandle, unsigned long int mapkey);
+typedef unsigned long long (*efihandleprot_t)(void* handle, efiguid_t* prot, void** interface);
+typedef unsigned long long (*efiallocpool_t)(efimemtype_t memtype, unsigned long long size, void** ret);
+typedef unsigned long long (*efifreepool_t)(void* buf);
+//typedef unsigned long long (*efiwaitforevent_t)(unsigned long long numofevents, void** event, unsigned long long* index);
+typedef unsigned long long (*efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
+typedef unsigned long long (*efigetmemmap_t)(unsigned long long* memmapsize, efimemdesc_t* memmap, unsigned long long* mapkey, unsigned long long* descsize, unsigned int* descversion);
+typedef unsigned long long (*efiexitbootservices_t)(void* imghandle, unsigned long long mapkey);
 
 typedef struct efibservices_t {
     efitableheader_t header;
@@ -142,8 +142,8 @@ typedef struct efiinputkey_t {
     unsigned short unicodech;
 } efiinputkey_t;
 
-typedef unsigned long int (*efireset_t)(void* this, unsigned char extendedverification);
-typedef unsigned long int (*efireadkeystroke_t)(void* this, efiinputkey_t* key);
+typedef unsigned long long (*efireset_t)(void* this, unsigned char extendedverification);
+typedef unsigned long long (*efireadkeystroke_t)(void* this, efiinputkey_t* key);
 
 typedef struct efisimpletextinput_t {
     efireset_t reset;
@@ -163,7 +163,7 @@ typedef struct efisystemtable_t {
     void* stderr;
     efirtservices_t* rtservices;
     efibservices_t* bservices;
-    unsigned long int numoftableents;
+    unsigned long long numoftableents;
     void* conftable;
 } efisystemtable_t;
 
@@ -197,13 +197,13 @@ typedef struct efigopmode_t {
     unsigned int maxmode;
     unsigned int mode;
     efigopmodeinfo_t* info;
-    unsigned long int sizeofinfo;
+    unsigned long long sizeofinfo;
     unsigned int* fbbase;
-    unsigned long int fbsize;
+    unsigned long long fbsize;
 } efigopmode_t;
 
-typedef unsigned long int (*efiquerymode_t)(void* this, unsigned int modenum, unsigned long int* sizeofinfo, efigopmodeinfo_t** info);
-typedef unsigned long int (*efisetmode_t)(void* this, unsigned int modenum);
+typedef unsigned long long (*efiquerymode_t)(void* this, unsigned int modenum, unsigned long long* sizeofinfo, efigopmodeinfo_t** info);
+typedef unsigned long long (*efisetmode_t)(void* this, unsigned int modenum);
 
 typedef struct efigop_t {
     efiquerymode_t querymode;
@@ -230,7 +230,7 @@ typedef struct efiloadedimageprot_t {
     unsigned int loadoptsize;
     void* loadopt;
     void* imgbase;
-    unsigned long int imgsize;
+    unsigned long long imgsize;
     efimemtype_t imgcodetype;
     efimemtype_t imgdatatype;
 } efiloadedimageprot_t;
@@ -238,25 +238,25 @@ typedef struct efiloadedimageprot_t {
 #define EFIFILEINFOGUID {0x9576e92, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}}
 
 typedef struct efifileinfo_t {
-    unsigned long int size;
-    unsigned long int filesize;
-    unsigned long int physicalsize;
+    unsigned long long size;
+    unsigned long long filesize;
+    unsigned long long physicalsize;
     efitime_t createtime;
     efitime_t lastaccesstime;
     efitime_t modificationtime;
-    unsigned long int attr;
+    unsigned long long attr;
     unsigned short int filename[262];
 } efifileinfo_t;
 
 typedef struct efifilehandle_t efifilehandle_t;
 
-typedef unsigned long int (*efifileopen_t)(efifilehandle_t* file, efifilehandle_t** newhandle, unsigned short int* filename, unsigned long int openmode, unsigned long int attr);
-typedef unsigned long int (*efifileclose_t)(efifilehandle_t* file);
-typedef unsigned long int (*efifileread_t)(efifilehandle_t* file, unsigned long int* bufsize, void* buf);
-typedef unsigned long int (*efigetinfo_t)(efifilehandle_t* file, efiguid_t* infotype, unsigned long int* bufsize, void* buf);
+typedef unsigned long long (*efifileopen_t)(efifilehandle_t* file, efifilehandle_t** newhandle, unsigned short int* filename, unsigned long long openmode, unsigned long long attr);
+typedef unsigned long long (*efifileclose_t)(efifilehandle_t* file);
+typedef unsigned long long (*efifileread_t)(efifilehandle_t* file, unsigned long long* bufsize, void* buf);
+typedef unsigned long long (*efigetinfo_t)(efifilehandle_t* file, efiguid_t* infotype, unsigned long long* bufsize, void* buf);
 
 typedef struct efifilehandle_t {
-    unsigned long int revision;
+    unsigned long long revision;
     efifileopen_t open;
     efifileclose_t close;
     void* delete;
@@ -271,10 +271,10 @@ typedef struct efifilehandle_t {
 
 #define SFSGUID {0x964e5b22, 0x6459, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}}
 
-typedef unsigned long int (*efiopenvolume_t)(void* this, efifilehandle_t** root);
+typedef unsigned long long (*efiopenvolume_t)(void* this, efifilehandle_t** root);
 
 typedef struct efisfsprot_t {
-    unsigned long int revision;
+    unsigned long long revision;
     efiopenvolume_t openvolume;
 } efisfsprot_t;
 
@@ -360,7 +360,7 @@ void wstrscr(const char* s) {
 /*
 efisimpletextinput_t* input = (void*)0;
 char getcharacter(unsigned char block) {
-    unsigned long int status = 0;
+    unsigned long long status = 0;
     efiinputkey_t key = {0};
     if(block) {
         // The WaitForKey event doesn't seem to be properly set up on all platforms
@@ -378,18 +378,18 @@ char getcharacter(unsigned char block) {
 
 #define EFIERROR(a) (((signed long int) a) < 0)
 
-void* memset(void* s, int c, unsigned long int n) {
+void* memset(void* s, int c, unsigned long long n) {
     unsigned char* b = (unsigned char*)s;
-    for(unsigned long int i = 0; i < n; i++) {
+    for(unsigned long long i = 0; i < n; i++) {
         b[i] = (unsigned char)c;
     }
     return s;
 }
 
-void* memcpy(void* d, void* s, unsigned long int n) {
+void* memcpy(void* d, void* s, unsigned long long n) {
     unsigned char* dst = (unsigned char*)d;
     const unsigned char* src = (const unsigned char*)s;
-    for(unsigned long int i = 0; i < n; i++) {
+    for(unsigned long long i = 0; i < n; i++) {
         dst[i] = src[i];
     }
     return d;
@@ -452,9 +452,9 @@ typedef struct elf64ehdr_t {
     unsigned short int type;
     unsigned short int machine;
     unsigned int version;
-    unsigned long int entry;
-    unsigned long int phoff;
-    unsigned long int shoff;
+    unsigned long long entry;
+    unsigned long long phoff;
+    unsigned long long shoff;
     unsigned int flags;
     unsigned short int ehsize;
     unsigned short int phentsize;
@@ -467,18 +467,18 @@ typedef struct elf64ehdr_t {
 typedef struct elf64phdr_t {
     unsigned int ptype;
     unsigned int flags;
-    unsigned long int offset;
-    unsigned long int vaddr;
-    unsigned long int paddr;
-    unsigned long int filesize;
-    unsigned long int memsize;
-    unsigned long int align;
+    unsigned long long offset;
+    unsigned long long vaddr;
+    unsigned long long paddr;
+    unsigned long long filesize;
+    unsigned long long memsize;
+    unsigned long long align;
 } elf64phdr_t;
 
 unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
 efifilehandle_t filedata = {0};
 
-unsigned long int inituefi(void* image, efisystemtable_t* systab) {
+unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     // Set up SSE
     __asm__ __volatile__ (
         "    movq %cr0, %rax\n"
@@ -489,16 +489,22 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         "    mov %rax, %cr4\n"
     );
 
+    unsigned long long status = 0;
+
     // Setup
+    efigop_t* gop = (void*)0;
+    efiguid_t gopguid = GOPGUID;
+    systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
+    gop->setmode(gop, 0);
 
     efiloadedimageprot_t* lip = (void*)0;
     efiguid_t lipguid = LIPGUID;
-    systab->bservices->handleprot(image, &lipguid, (void**)lip);
+    systab->bservices->handleprot(image, &lipguid, (void**)&lip);
 
     efifilehandle_t* rootdir = (void*)0;
     efisfsprot_t* sfs = (void*)0;
     efiguid_t sfsguid = SFSGUID;
-    systab->bservices->handleprot(lip->devhanle, &sfsguid, (void**)&sfs);
+    status = systab->bservices->handleprot(lip->devhanle, &sfsguid, (void**)&sfs);
     sfs->openvolume(sfs, &rootdir);
 
     efifilehandle_t* kernelfile = &filedata;
@@ -506,18 +512,13 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
 
     efifileinfo_t kernelfileinfo;
     efiguid_t fileinfoguid = EFIFILEINFOGUID;
-    unsigned long int fileinfosize = sizeof(kernelfileinfo);
+    unsigned long long fileinfosize = sizeof(kernelfileinfo);
     kernelfile->getinfo(kernelfile, &fileinfoguid, &fileinfosize, &kernelfileinfo);
 
     void* kerneldata = (void*)0;
     systab->bservices->allocatepool(lip->imgdatatype, kernelfileinfo.filesize, &kerneldata);
     kernelfile->read(kernelfile, &(kernelfileinfo.filesize), kerneldata);
     kernelfile->close(kernelfile);
-
-    efigop_t* gop = (void*)0;
-    efiguid_t gopguid = GOPGUID;
-    systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
-    gop->setmode(gop, 0);
 
     sysparam_t bootparams = {0};
     bootparams.framebuffer = gop->mode->fbbase;
@@ -535,20 +536,24 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         }
     }
 
-    void* entry = (void*)elf->entry;
+    void* entry = (void*)(elf->entry);
 
     systab->bservices->freepool(kerneldata);
 
     efimemdesc_t* memmap = (void*)0;
-    unsigned long int count = 3; // Three tries
-    unsigned long int memmapsize = 0;
-    unsigned long int mapkey = 0;
-    unsigned long int descsize = 0;
-    unsigned long int status = 0;
+    unsigned long long count = 3; // Three tries
+    unsigned long long memmapsize = 0;
+    unsigned long long mapkey = 0;
+    unsigned long long descsize = 0;
     while(count--) {
         status = systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, (void*)0);
         if(status != (0x8000000000000000 | (unsigned int)(5))) break;
         status = systab->bservices->exitbootservices(image, mapkey);
+    }
+    for(unsigned int y = 0; y < gop->mode->info->vres; y++) {
+        for(unsigned int x = 0; x < gop->mode->info->hres; x++) {
+            ((unsigned int*)(gop->mode->fbbase))[(y * gop->mode->info->pixperscanline) + x] = (((!(y % 2)) && (!(x % 2))) ? 0xffffffff : 0x00000000);
+        }
     }
 
     (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
@@ -559,7 +564,7 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
 
     wstrscr("Firmware Vendor: ");
     unsigned short wc = 0;
-    for(unsigned long int i = 0; (wc = systab->fwvendor[i]); i++) {
+    for(unsigned long long i = 0; (wc = systab->fwvendor[i]); i++) {
         wchscr((char)wc);
     }
     wchscr('\n');

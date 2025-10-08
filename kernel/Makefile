@@ -1,5 +1,5 @@
 CFILES = $(wildcard *.c)
-LDFLAGS = -T kernel/linker.ld -nostdlib
+LDFLAGS = -T linker.ld -nostdlib
 
 CFLAGS = -ffreestanding -Wall -Wextra -mno-red-zone
 
@@ -10,4 +10,7 @@ kernel.o:
 	clang -target x86_64-elf -c $(CFILES) -o $@ $(CFLAGS)
 
 zaniac.elf: boot.o kernel.o
-	lld $(LDFLAGS) -o $@ $<
+	x86_64-elf-ld $(LDFLAGS) -o $@ boot.o kernel.o
+
+clean: zaniac.elf
+	rm *.o zaniac.elf

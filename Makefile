@@ -12,13 +12,15 @@ uefi.img: subdirs
 	mcopy -i ./part.img ./boot/main.efi ::
 	mcopy -i ./part.img ./kernel/zaniac.elf ::
 	dd if=./part.img of=./uefi.img bs=512 count=91669 seek=2048 conv=notrunc
-	rm -rf ./part.img
+	rm ./part.img
 
 clean: uefi.img
 	rm uefi.img
 
-run: uefi.img bios64.bin
-	qemu-system-x86_64 -cpu qemu64 -bios ./bios64.bin -drive file=uefi.img,if=ide -serial file:serial.log
+run: uefi.img
+	qemu-system-x86_64 -cpu qemu64 -drive file=uefi.img,if=ide -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=/usr/share/OVMF/OVMF_CODE_4M.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=/usr/share/OVMF/OVMF_VARS_4M.fd -net none
 
-bios64.bin:
-	wget https://github.com/BlankOn/ovmf-blobs/raw/refs/heads/master/bios64.bin
+clean: uefi.img
+	rm uefi.img
+	make -C boot clean
+	make -C kernel clean
