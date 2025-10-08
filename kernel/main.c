@@ -1,4 +1,4 @@
-#include "sysyparam.h"
+#include "sysparam.h"
 
 void* memcpy(void* d, void* s, unsigned long int n) {
     unsigned char* dst = (unsigned char*)d;

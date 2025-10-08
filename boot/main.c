@@ -475,7 +475,7 @@ typedef struct elf64phdr_t {
     unsigned long int align;
 } elf64phdr_t;
 
-const unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
+unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
 efifilehandle_t filedata = {0};
 
 unsigned long int inituefi(void* image, efisystemtable_t* systab) {
@@ -499,7 +499,7 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     efisfsprot_t* sfs = (void*)0;
     efiguid_t sfsguid = SFSGUID;
     systab->bservices->handleprot(lip->devhanle, &sfsguid, (void**)&sfs);
-    rootdir = sfs->openvolume(sfs, &rootdir);
+    sfs->openvolume(sfs, &rootdir);
 
     efifilehandle_t* kernelfile = &filedata;
     rootdir->open(rootdir, &kernelfile, kernelfilename, EFIFILEMODEREAD, 0);
@@ -523,7 +523,7 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
     bootparams.framebuffer = gop->mode->fbbase;
     bootparams.hres = gop->mode->info->hres;
     bootparams.vres = gop->mode->info->vres;
-    bootparams.pitch = gop->mode->infor->pixperscanline;
+    bootparams.pitch = gop->mode->info->pixperscanline;
 
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
@@ -535,7 +535,7 @@ unsigned long int inituefi(void* image, efisystemtable_t* systab) {
         }
     }
 
-    void* entry = elf->entry;
+    void* entry = (void*)elf->entry;
 
     systab->bservices->freepool(kerneldata);
 
