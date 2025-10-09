@@ -1,5 +1,5 @@
 // Font
-// #include "VGA8.h"
+#include "../font/VGA8.h"
 
 // Boot params
 #include "../kernel/sysparam.h"
@@ -56,7 +56,7 @@ typedef enum efimemtype_t {
     efirtscode,
     efirtsdata,
     eficonvetmem,
-    efiunusablemem,
+    efiunusablemem,//typedef unsigned long long (*efiwaitforevent_t)(unsigned long long numofevents, void** event, unsigned long long* index);
     efiacpireclaimmem,
     efiacpimemnvs,
     efimemmappedio,
@@ -79,7 +79,6 @@ typedef struct efimemdesc_t {
 typedef unsigned long long (*efihandleprot_t)(void* handle, efiguid_t* prot, void** interface);
 typedef unsigned long long (*efiallocpool_t)(efimemtype_t memtype, unsigned long long size, void** ret);
 typedef unsigned long long (*efifreepool_t)(void* buf);
-//typedef unsigned long long (*efiwaitforevent_t)(unsigned long long numofevents, void** event, unsigned long long* index);
 typedef unsigned long long (*efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
 typedef unsigned long long (*efigetmemmap_t)(unsigned long long* memmapsize, efimemdesc_t* memmap, unsigned long long* mapkey, unsigned long long* descsize, unsigned int* descversion);
 typedef unsigned long long (*efiexitbootservices_t)(void* imghandle, unsigned long long mapkey);
@@ -280,49 +279,9 @@ typedef struct efisfsprot_t {
 
 #define EFIFILEMODEREAD 0x1
 
-// I/O
-/*
-#define COM1 0x3f8
-
-static inline void outb(unsigned short port, unsigned char val) {
-    __asm__ volatile ( "outb %b0, %w1" : : "a"(val), "Nd"(port) : "memory");
-}
-
-static inline unsigned char inb(unsigned short port) {
-    unsigned char ret;
-    __asm__ volatile ( "inb %w1, %b0"
-                   : "=a"(ret)
-                   : "Nd"(port)
-                   : "memory");
-    return ret;
-}
-
-void wchcom1(const char c) {
-    while(!(inb(COM1 + 5) & 0x20)) {}
-    outb(COM1, c);
-}
-
-void wstrcom1(const char* s) {
-    char c = 0;
-    while((c = *s++)) {
-        wchcom1(c);
-    }
-}
-*/
-
-
 //Screen
-/*
 efigop_t* gop = (void*)0;
-void initdisplay(efisystemtable_t* systab) {
-    // TODO: Add error handling
-    efiguid_t gopguid = GOPGUID;
-    systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
-    gop->setmode(gop, 0);
-}
-*/
 
-/*
 unsigned int cx = 0;
 unsigned int cy = 0;
 void wchscr(const char c) {
@@ -354,27 +313,6 @@ void wstrscr(const char* s) {
         wchscr(c);
     }
 }
-*/
-
-// Keyboard
-/*
-efisimpletextinput_t* input = (void*)0;
-char getcharacter(unsigned char block) {
-    unsigned long long status = 0;
-    efiinputkey_t key = {0};
-    if(block) {
-        // The WaitForKey event doesn't seem to be properly set up on all platforms
-        while((status = input->readkeystroke(input, &key)) == 6) {}
-    }
-    // Convert Enter key (13) to \n (10)
-    if(key.unicodech == 13) {
-        return '\n';
-    }
-    return (char)(key.unicodech);
-}
-*/
-
-// Support
 
 #define EFIERROR(a) (((signed long int) a) < 0)
 
@@ -395,56 +333,6 @@ void* memcpy(void* d, void* s, unsigned long long n) {
     return d;
 }
 
-/*
-unsigned int abs(signed int num) {
-    if(num < 0) {
-        return (unsigned int)(-num);
-    } else {
-        return (unsigned int)num;
-    }
-}
-
-char* numtostr(unsigned int val, unsigned int base) {
-    unsigned char neg = 0;
-    if(((signed int)val) < 0) {
-        neg = 1;
-        val = abs(val);
-    }
-    static char buf[32] = {0};
-    if(!val) {
-        buf[30] = '0';
-        return &buf[30];
-    }
-    unsigned int i = 30;
-    for(; val && i; i--, val /= base) {
-        buf[i] = "0123456789abcdef"[val % base];
-    }
-    if(neg) {
-        buf[i] = '-';
-        return &buf[i];
-    } else {
-        return &buf[i + 1];
-    }
-}
-*/
-
-// Main code
-/*
-const char *months[] = {
-    "January",
-    "Febuary",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December"
-};
-*/
 #define PTLOAD 1
 
 typedef struct elf64ehdr_t {
@@ -492,10 +380,13 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long status = 0;
 
     // Setup
-    efigop_t* gop = (void*)0;
     efiguid_t gopguid = GOPGUID;
-    systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
-    gop->setmode(gop, 0);
+    status = systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
+    if(!EFIERROR(status) && gop) {
+        gop->setmode(gop, 0);
+    } else {
+        return 0;
+    }
 
     efiloadedimageprot_t* lip = (void*)0;
     efiguid_t lipguid = LIPGUID;
@@ -505,7 +396,13 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     efisfsprot_t* sfs = (void*)0;
     efiguid_t sfsguid = SFSGUID;
     status = systab->bservices->handleprot(lip->devhanle, &sfsguid, (void**)&sfs);
-    sfs->openvolume(sfs, &rootdir);
+    if(!EFIERROR(status)) {
+        sfs->openvolume(sfs, &rootdir);
+    }
+    if(!rootdir) {
+        wstrscr("Failed to open file.");
+        while(1) asm volatile("hlt");
+    }
 
     efifilehandle_t* kernelfile = &filedata;
     rootdir->open(rootdir, &kernelfile, kernelfilename, EFIFILEMODEREAD, 0);
@@ -547,56 +444,26 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long descsize = 0;
     while(count--) {
         status = systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, (void*)0);
+        if(status & 0x8000000000000000) {
+            if((status ^ 0x8000000000000000) != 5) {
+                break;
+            }
+        }
         if(status != (0x8000000000000000 | (unsigned int)(5))) break;
         status = systab->bservices->exitbootservices(image, mapkey);
-    }
-    for(unsigned int y = 0; y < gop->mode->info->vres; y++) {
-        for(unsigned int x = 0; x < gop->mode->info->hres; x++) {
-            ((unsigned int*)(gop->mode->fbbase))[(y * gop->mode->info->pixperscanline) + x] = (((!(y % 2)) && (!(x % 2))) ? 0xffffffff : 0x00000000);
+        if(!EFIERROR(status)) {
+            status = 0;
+            break;
         }
+    }
+    if((int)(status & 0xffff)) {
+        wstrscr("They limit our potential yet again.");
+        while(1) asm volatile("hlt");
     }
 
     (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
 
-    /*
-    wstrscr("Hello, world!\n");
-    input = systab->conin;
-
-    wstrscr("Firmware Vendor: ");
-    unsigned short wc = 0;
-    for(unsigned long long i = 0; (wc = systab->fwvendor[i]); i++) {
-        wchscr((char)wc);
-    }
-    wchscr('\n');
-
-    wstrscr("Time of boot: ");
-    // Test for accessing UEFI functions
-    efitime_t time = {0};
-    efitimecap_t timecap = {0};
-    systab->rtservices->gettime(&time, &timecap);
-    wstrscr(months[time.month - 1]);
-    wchscr(' ');
-    char* timevalstr = numtostr(time.day, 10);
-    wstrscr(timevalstr);
-    wstrscr(", ");
-    timevalstr = numtostr(time.year, 10);
-    wstrscr(timevalstr);
-    wstrscr(" at ");
-    timevalstr = numtostr(time.hour, 10);
-    wstrscr(timevalstr);
-    wchscr(':');
-    timevalstr = numtostr(time.minute, 10);
-    wstrscr(timevalstr);
-    wchscr(':');
-    timevalstr = numtostr(time.second, 10);
-    wstrscr(timevalstr);
-    wchscr('\n');
-
-    while(1) {
-        char c = getcharacter(1);
-        wchscr(c);
-    }
-    */
+    while(1) asm volatile("hlt");
 
     return 0;
 }
