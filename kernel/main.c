@@ -1,5 +1,4 @@
 #include "sysparam.h"
-#include "mem/page.h"
 
 void* memcpy(void* d, void* s, unsigned long long n) {
     unsigned char* dst = (unsigned char*)d;
