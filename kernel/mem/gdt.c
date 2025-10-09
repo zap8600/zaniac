@@ -8,3 +8,7 @@ typedef struct gdtentry_t {
     unsigned char granularity;
     unsigned char basehigh;
 } __attribute__((packed)) gdtentry_t;
+
+void init_gdt() {
+    asm volatile("cli");
+}
