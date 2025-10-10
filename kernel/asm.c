@@ -26,7 +26,7 @@ unsigned long long readmsr(unsigned int id) {
 }
 
 void outb(unsigned short int port, unsigned char value) {
-    asm volatile("outb %b0 %w1" : : "a"(value), "Nd"(port) : "memory");
+    asm volatile("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
 }
 
 void inb(unsigned short int port) {

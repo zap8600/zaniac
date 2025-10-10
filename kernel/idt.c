@@ -142,5 +142,5 @@ void exceptionhandler(regs_t* r) {
     // Someone told me the hypervisor doesn't like me stopping all CPUs and disabling interrupts so
     // Maybe don't do this
     // asm volatile("cli");
-    asm volatile("hlt");
+    while(1) asm volatile("hlt");
 }

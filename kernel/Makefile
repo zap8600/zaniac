@@ -1,21 +1,19 @@
 LDFLAGS = -T linker.ld -nostdlib -z noexecstack
 
-CFLAGS=-ffreestanding -Wall -Wextra -mno-red-zone -g
-
-ARCH?=x86_64
-
-include $(ARCH)/make.config
-
-CFLAGS:=$(CFLAGS) $(ARCHCFLAGS)
+CFLAGS = -ffreestanding -Wall -Wextra -mno-red-zone -g
 
 OBJS=\
 main.o\
 disp.o\
 string.o\
-$(ARCH)/arch.o\
+asm.o\
+boot.o\
+gdt.o\
+idt.o\
+isr.o\
 
 .PHONY: clean
-.SUFFIXES: .o .c
+.SUFFIXES: .o .c .s
 
 zaniac.elf: $(OBJS)
 	x86_64-elf-ld $(LDFLAGS) -o $@ $(OBJS)
@@ -24,7 +22,6 @@ zaniac.elf: $(OBJS)
 
 clean:
 	rm -f *.o zaniac.elf zaniac.sym
-	make -C $(ARCH) clean
 
 .c.o:
 	clang -target x86_64-elf -c $< -o $@ $(CFLAGS)

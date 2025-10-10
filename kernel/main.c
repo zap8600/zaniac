@@ -15,10 +15,10 @@ void kernelmain(sysparam_t* bootparams) {
     initidt();
     drawcheckerboardpattern(0x0000ffff);
     char cpuidbuf[13] = {0};
-    int a = 0;
-    int b = 0;
-    int c = 0;
-    int d = 0;
+    unsigned int a = 0;
+    unsigned int b = 0;
+    unsigned int c = 0;
+    unsigned int d = 0;
     cpuid(0, &a, &b, &c, &d);
     //b = (b & 0xff) << 24 | (b & 0xff00) << 8| (b & 0xff0000) >> 8 | (b & 0xff000000) >> 24;
     //c = (c & 0xff) << 24 | (c & 0xff00) << 8| (c & 0xff0000) >> 8 | (c & 0xff000000) >> 24;

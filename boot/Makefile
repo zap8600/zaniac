@@ -7,5 +7,5 @@ main.efi:
 
 .PHONY: clean
 
-clean: main.efi
-	rm main.efi
+clean:
+	rm -f main.efi
