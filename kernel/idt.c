@@ -14,7 +14,7 @@ struct regs_t {
 #define ISRNOERR(index) \
 __attribute__((naked)) \
 void isr ## index () { \
-    asm volatile("iretq"); \
+    asm volatile("hlt; iretq"); \
 }
 
 //
