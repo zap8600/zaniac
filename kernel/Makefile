@@ -7,7 +7,6 @@ main.o\
 disp.o\
 string.o\
 asm.o\
-boot.o\
 gdt.o\
 idt.o\
 pic.o\
@@ -16,9 +15,9 @@ pic.o\
 .SUFFIXES: .o .c .s
 
 zaniac.elf: $(OBJS)
-	x86_64-elf-ld $(LDFLAGS) -o $@ $(OBJS)
-	x86_64-elf-objcopy --only-keep-debug zaniac.elf zaniac.sym
-	x86_64-elf-objcopy --strip-debug zaniac.elf
+	ld.lld $(LDFLAGS) -o $@ $(OBJS)
+	llvm-objcopy --only-keep-debug zaniac.elf zaniac.sym
+	llvm-objcopy --strip-debug zaniac.elf
 
 clean:
 	rm -f *.o zaniac.elf zaniac.sym

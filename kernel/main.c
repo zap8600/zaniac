@@ -7,6 +7,21 @@
 
 sysparam_t params;
 
+__attribute__((naked))
+void start() {
+    asm volatile(
+        "mov $stacktop, %rsp\n"
+        "call kernelmain\n"
+        ".section .bss\n"
+        ".align 16\n"
+        "stackbottom:\n"
+        ".skip 16384\n"
+        ".global stacktop\n"
+        "stacktop:\n"
+        ".section .text\n"
+    );
+}
+
 void kernelmain(sysparam_t* bootparams) {
     asm volatile("cli");
     memcpy(&params, bootparams, sizeof(sysparam_t));
