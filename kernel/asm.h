@@ -5,6 +5,7 @@ void cpuid(int code, unsigned int* a, unsigned int* b, unsigned int* c, unsigned
 void writemsr(unsigned long long id, unsigned long long value);
 unsigned long long readmsr(unsigned int id);
 void outb(unsigned short int port, unsigned char value);
-void inb(unsigned short int port);
+unsigned char inb(unsigned short int port);
+void iowait();
 
 #endif

@@ -1,10 +1,21 @@
 .section text
 .align 8
 
+.macro IRQ index byte
+    .global _irq\index
+    .type _irq\index, @function
+    _irq\index:
+        pushq $0x00
+        pushq $\byte
+        jmp isrcommon
+.endm
+
 .macro ISRNOERR index
     .global _isr\index
     .type _isr\index, @function
     _isr\index:
+        pushq $0x00
+        pushq $\index
         jmp isrcommon
 .endm
 
@@ -12,6 +23,7 @@
     .global _isr\index
     .type _isr\index, @function
     _isr\index:
+        pushq $\index
         jmp isrcommon
 .endm
 
@@ -48,6 +60,25 @@ ISRNOERR 29
 ISRERR 30
 ISRNOERR 31
 
+//
+IRQ 0, 32
+IRQ 1, 33
+IRQ 2, 34
+IRQ 3, 35
+IRQ 4, 36
+IRQ 5, 37
+IRQ 6, 38
+IRQ 7, 39
+IRQ 8, 40
+IRQ 9, 41
+IRQ 10, 42
+IRQ 11, 43
+IRQ 12, 44
+IRQ 13, 45
+IRQ 14, 46
+IRQ 15, 47
+//
+
 isrcommon:
     /* Saving all the registers */
     push %rax
@@ -70,7 +101,7 @@ isrcommon:
     /* DF must be clear on function entry */
     cld
 
-    call exceptionhandler
+    call inthandler
 
     /* Now we return them */
     push %r15
@@ -88,6 +119,5 @@ isrcommon:
     push %rcx
     push %rbx
     push %rax
-    
 
     iretq

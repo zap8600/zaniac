@@ -1,5 +1,6 @@
 #include "idt.h"
 #include "disp.h"
+#include "pic.h"
 
 typedef struct regs_t {
     // Saves registers, we might need these
@@ -18,6 +19,10 @@ typedef struct regs_t {
     unsigned long long rcx;
     unsigned long long rbx;
     unsigned long long rax;
+
+    // Interrupt number and error status pushed
+    unsigned long long interruptnum;
+    unsigned long long errorcode;
 
     // Automatically pushed by the interrupt
     unsigned long long rip;
@@ -60,6 +65,25 @@ extern regs_t* _isr28(regs_t*);
 extern regs_t* _isr29(regs_t*);
 extern regs_t* _isr30(regs_t*);
 extern regs_t* _isr31(regs_t*);
+//
+
+//
+extern regs_t* _irq0(regs_t*);
+extern regs_t* _irq1(regs_t*);
+extern regs_t* _irq2(regs_t*);
+extern regs_t* _irq3(regs_t*);
+extern regs_t* _irq4(regs_t*);
+extern regs_t* _irq5(regs_t*);
+extern regs_t* _irq6(regs_t*);
+extern regs_t* _irq7(regs_t*);
+extern regs_t* _irq8(regs_t*);
+extern regs_t* _irq9(regs_t*);
+extern regs_t* _irq10(regs_t*);
+extern regs_t* _irq11(regs_t*);
+extern regs_t* _irq12(regs_t*);
+extern regs_t* _irq13(regs_t*);
+extern regs_t* _irq14(regs_t*);
+extern regs_t* _irq15(regs_t*);
 //
 
 typedef struct idtentry_t {
@@ -132,13 +156,17 @@ void initidt() {
     idtsetdesc(31, _isr31, 0x8e);
     //
 
+    remappic(32, 40);
+
+    //
+
     asm volatile("lidt %0" : : "m"(idtr));
     asm volatile("sti");
 }
 
 __attribute__((noreturn))
-void exceptionhandler(regs_t* r);
-void exceptionhandler(regs_t* r) {
+void inthandler(regs_t* r);
+void inthandler(regs_t* r) {
     // Someone told me the hypervisor doesn't like me stopping all CPUs and disabling interrupts so
     // Maybe don't do this
     // asm volatile("cli");

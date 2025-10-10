@@ -11,6 +11,7 @@ boot.o\
 gdt.o\
 idt.o\
 isr.o\
+pic.o\
 
 .PHONY: clean
 .SUFFIXES: .o .c .s
