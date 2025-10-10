@@ -36,7 +36,7 @@ typedef struct gdt_t {
     tssentry_t tss;
 } __attribute__((packed)) __attribute__((aligned(16))) gdt_t;
 
-gdt_t gdt = {
+gdt_t gdt __attribute__((used)) = {
     {
         {0x0000, 0x0000, 0x00, 0x00, 0x00, 0x00},
         {0xffff, 0x0000, 0x00, 0x9a, 0xaf, 0x00},

@@ -10,7 +10,6 @@ asm.o\
 boot.o\
 gdt.o\
 idt.o\
-isr.o\
 pic.o\
 
 .PHONY: clean

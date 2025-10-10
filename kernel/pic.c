@@ -51,6 +51,6 @@ void clearmaskpic(unsigned char irqline) {
         port = PIC2DATA;
         irqline -= 8;
     }
-    value = inb(port) | (1 << irqline);
+    value = inb(port) & ~(1 << irqline);
     outb(port, value);
 }

@@ -27,6 +27,7 @@ void kernelmain(sysparam_t* bootparams) {
     memcpy(&(cpuidbuf[4]), &d, 4);
     memcpy(&(cpuidbuf[8]), &c, 4);
     wstrscr(&(cpuidbuf[0]));
-    //asm volatile("int $3");
+    wchscr('\n');
+    asm volatile("int $3");
     while(1) asm volatile("hlt");
 }
