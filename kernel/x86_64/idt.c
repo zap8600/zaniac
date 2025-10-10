@@ -1,39 +1,65 @@
 #include "idt.h"
 #include "disp.h"
 
+typedef struct regs_t {
+    // Saves registers, we might need these
+    unsigned long long r15;    
+    unsigned long long r14;
+    unsigned long long r13;
+    unsigned long long r12;
+    unsigned long long r11;
+    unsigned long long r10;
+    unsigned long long r9;
+    unsigned long long r8;
+    unsigned long long rbp;
+    unsigned long long rdi;
+    unsigned long long rsi;
+    unsigned long long rdx;
+    unsigned long long rcx;
+    unsigned long long rbx;
+    unsigned long long rax;
+
+    // Automatically pushed by the interrupt
+    unsigned long long rip;
+    unsigned long long cs;
+    unsigned long long rflags;
+    unsigned long long rsp;
+    unsigned long long ss;
+} regs_t;
+
 //
-extern void* _isr0();
-extern void* _isr1();
-extern void* _isr2();
-extern void* _isr3();
-extern void* _isr4();
-extern void* _isr5();
-extern void* _isr6();
-extern void* _isr7();
-extern void* _isr8();
-extern void* _isr9();
-extern void* _isr10();
-extern void* _isr11();
-extern void* _isr12();
-extern void* _isr13();
-extern void* _isr14();
-extern void* _isr15();
-extern void* _isr16();
-extern void* _isr17();
-extern void* _isr18();
-extern void* _isr19();
-extern void* _isr20();
-extern void* _isr21();
-extern void* _isr22();
-extern void* _isr23();
-extern void* _isr24();
-extern void* _isr25();
-extern void* _isr26();
-extern void* _isr27();
-extern void* _isr28();
-extern void* _isr29();
-extern void* _isr30();
-extern void* _isr31();
+extern regs_t* _isr0(regs_t*);
+extern regs_t* _isr1(regs_t*);
+extern regs_t* _isr2(regs_t*);
+extern regs_t* _isr3(regs_t*);
+extern regs_t* _isr4(regs_t*);
+extern regs_t* _isr5(regs_t*);
+extern regs_t* _isr6(regs_t*);
+extern regs_t* _isr7(regs_t*);
+extern regs_t* _isr8(regs_t*);
+extern regs_t* _isr9(regs_t*);
+extern regs_t* _isr10(regs_t*);
+extern regs_t* _isr11(regs_t*);
+extern regs_t* _isr12(regs_t*);
+extern regs_t* _isr13(regs_t*);
+extern regs_t* _isr14(regs_t*);
+extern regs_t* _isr15(regs_t*);
+extern regs_t* _isr16(regs_t*);
+extern regs_t* _isr17(regs_t*);
+extern regs_t* _isr18(regs_t*);
+extern regs_t* _isr19(regs_t*);
+extern regs_t* _isr20(regs_t*);
+extern regs_t* _isr21(regs_t*);
+extern regs_t* _isr22(regs_t*);
+extern regs_t* _isr23(regs_t*);
+extern regs_t* _isr24(regs_t*);
+extern regs_t* _isr25(regs_t*);
+extern regs_t* _isr26(regs_t*);
+extern regs_t* _isr27(regs_t*);
+extern regs_t* _isr28(regs_t*);
+extern regs_t* _isr29(regs_t*);
+extern regs_t* _isr30(regs_t*);
+extern regs_t* _isr31(regs_t*);
 //
 
 typedef struct idtentry_t {
@@ -111,8 +137,10 @@ void initidt() {
 }
 
 __attribute__((noreturn))
-void exceptionhandler(void);
-void exceptionhandler() {
-    asm volatile("cli");
+void exceptionhandler(regs_t* r);
+void exceptionhandler(regs_t* r) {
+    // Someone told me the hypervisor doesn't like me stopping all CPUs and disabling interrupts so
+    // Maybe don't do this
+    // asm volatile("cli");
     asm volatile("hlt");
 }
