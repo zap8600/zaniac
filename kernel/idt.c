@@ -11,10 +11,13 @@ struct regs_t {
     unsigned long long ss;
 };
 
+__attribute__((no_caller_saved_registers))
+void inthandler(unsigned char interruptnum, unsigned char error);
+
 #define ISRNOERR(index) \
-__attribute__((naked)) \
-void isr ## index () { \
-    asm volatile("hlt; iretq"); \
+__attribute__((interrupt)) \
+void isr ## index() { \
+    inthandler(index, 0); \
 }
 
 //
@@ -128,4 +131,12 @@ void initidt() {
 
     asm volatile("lidt %0" : : "m"(idtr));
     asm volatile("sti");
+}
+
+void inthandler(unsigned char interruptnum, unsigned char error) {
+    if(interruptnum == 3) {
+        wstrscr("Hello, breakpoint!\n");
+    } else {
+        wstrscr("Hello, scary interrupt!\n");
+    }
 }

@@ -29,5 +29,6 @@ void kernelmain(sysparam_t* bootparams) {
     wstrscr(&(cpuidbuf[0]));
     wchscr('\n');
     asm volatile("int $3");
+    wstrscr("Still running!\n");
     while(1) asm volatile("hlt");
 }
