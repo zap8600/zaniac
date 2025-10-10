@@ -12,6 +12,10 @@ void start() {
     asm volatile(
         "mov $stacktop, %rsp\n"
         "call kernelmain\n"
+        "cli\n"
+        "1:\n"
+        "hlt\n"
+        "jmp 1b\n"
         ".section .bss\n"
         ".align 16\n"
         "stackbottom:\n"
