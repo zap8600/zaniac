@@ -1,16 +1,30 @@
-CFILES = $(wildcard *.c)
-LDFLAGS = -T linker.ld -nostdlib
+LDFLAGS = -T linker.ld -nostdlib -z noexecstack
 
-CFLAGS = -ffreestanding -Wall -Wextra -mno-red-zone
+CFLAGS = -ffreestanding -Wall -Wextra -mno-red-zone -g
 
-boot.o:
-	x86_64-elf-as boot.s -o boot.o
+OBJS=\
+main.o\
+boot.o\
+gdt.o\
+idt.o\
+isr.o\
+disp.o\
+string.o\
+asm.o\
 
-kernel.o:
-	clang -target x86_64-elf -c $(CFILES) -o $@ $(CFLAGS)
+.PHONY: clean
+.SUFFIXES: .o .c .s
 
-zaniac.elf: boot.o kernel.o
-	x86_64-elf-ld $(LDFLAGS) -o $@ boot.o kernel.o
+zaniac.elf: $(OBJS)
+	x86_64-elf-ld $(LDFLAGS) -o $@ $(OBJS)
+	x86_64-elf-objcopy --only-keep-debug zaniac.elf zaniac.sym
+	x86_64-elf-objcopy --strip-debug zaniac.elf
 
-clean: zaniac.elf
-	rm *.o zaniac.elf
+clean:
+	rm -f *.o zaniac.elf zaniac.sym
+
+.c.o:
+	clang -target x86_64-elf -c $< -o $@ $(CFLAGS)
+
+.s.o:
+	x86_64-elf-as $< -o $@

@@ -5,5 +5,7 @@ main.efi:
 	mv main.dll main.efi
 	rm main.o
 
+.PHONY: clean
+
 clean: main.efi
 	rm main.efi

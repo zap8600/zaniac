@@ -1,15 +1,16 @@
 .section .bss
 .align 16
-stack_bottom:
+stackbottom:
 .skip 16384
-stack_top:
+.global stacktop
+stacktop:
 
 .section .text
 .global _start
 .type _start,@function
 _start:
-    mov $stack_top, %rsp;
-    call kernel_main
+    mov $stacktop, %rsp;
+    call kernelmain
     cli
 1:  hlt
     jmp 1b
