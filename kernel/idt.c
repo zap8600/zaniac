@@ -16,14 +16,14 @@ void inthandler(unsigned char interruptnum, unsigned char error);
 
 #define ISRNOERR(index) \
 __attribute__((interrupt)) \
-void isr ## index(struct regs_t* r) { \
+void isr ## index() { \
     inthandler(index, 0); \
 }
 
 #define ISRERR(index) \
 __attribute__((interrupt)) \
-void isr ## index(struct regs_t* r, unsigned long errorcode) { \
-    inthandler(index, errorcode); \
+void isr ## index() { \
+    inthandler(index, 1); \
 }
 
 //

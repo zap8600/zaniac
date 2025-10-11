@@ -24,6 +24,3 @@ clean:
 
 .c.o:
 	clang -target x86_64-elf -c $< -o $@ $(CFLAGS)
-
-.s.o:
-	x86_64-elf-as $< -o $@

@@ -4,6 +4,8 @@
 // Boot params
 #include "../kernel/sysparam.h"
 
+// https://www.youtube.com/watch?v=mHh2-ixF9Yk&t=1031s
+
 // EFI data
 typedef struct efitableheader_t {
     unsigned long long signature;
