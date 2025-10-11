@@ -4,10 +4,10 @@
 
 struct regs_t {
     // Automatically pushed by the interrupt
-    unsigned long long rip;
+    unsigned long long ip;
     unsigned long long cs;
-    unsigned long long rflags;
-    unsigned long long rsp;
+    unsigned long long flags;
+    unsigned long long sp;
     unsigned long long ss;
 };
 
@@ -16,8 +16,14 @@ void inthandler(unsigned char interruptnum, unsigned char error);
 
 #define ISRNOERR(index) \
 __attribute__((interrupt)) \
-void isr ## index() { \
+void isr ## index(struct regs_t* r) { \
     inthandler(index, 0); \
+}
+
+#define ISRERR(index) \
+__attribute__((interrupt)) \
+void isr ## index(struct regs_t* r, unsigned long errorcode) { \
+    inthandler(index, errorcode); \
 }
 
 //
@@ -29,20 +35,20 @@ ISRNOERR(4)
 ISRNOERR(5)
 ISRNOERR(6)
 ISRNOERR(7)
-ISRNOERR(8)
+ISRERR(8)
 ISRNOERR(9)
-ISRNOERR(10)
-ISRNOERR(11)
-ISRNOERR(12)
-ISRNOERR(13)
-ISRNOERR(14)
+ISRERR(10)
+ISRERR(11)
+ISRERR(12)
+ISRERR(13)
+ISRERR(14)
 ISRNOERR(15)
 ISRNOERR(16)
-ISRNOERR(17)
+ISRERR(17)
 ISRNOERR(18)
 ISRNOERR(19)
 ISRNOERR(20)
-ISRNOERR(21)
+ISRERR(21)
 ISRNOERR(22)
 ISRNOERR(23)
 ISRNOERR(24)
@@ -50,8 +56,8 @@ ISRNOERR(25)
 ISRNOERR(26)
 ISRNOERR(27)
 ISRNOERR(28)
-ISRNOERR(29)
-ISRNOERR(30)
+ISRERR(29)
+ISRERR(30)
 ISRNOERR(31)
 //
 
@@ -125,7 +131,7 @@ void initidt() {
     idtsetdesc(31, isr31, 0x8e);
     //
 
-    //remappic(32, 40);
+    remappic(32, 40);
 
     //
 
