@@ -58,7 +58,7 @@ typedef enum efimemtype_t {
     efirtscode,
     efirtsdata,
     eficonvetmem,
-    efiunusablemem,//typedef unsigned long long (*efiwaitforevent_t)(unsigned long long numofevents, void** event, unsigned long long* index);
+    efiunusablemem,
     efiacpireclaimmem,
     efiacpimemnvs,
     efimemmappedio,
@@ -433,7 +433,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     kernelfile->getinfo(kernelfile, &fileinfoguid, &fileinfosize, &kernelfileinfo);
 
     void* kerneldata = (void*)0;
-    systab->bservices->allocatepool(lip->imgdatatype, kernelfileinfo.filesize, &kerneldata);
+    systab->bservices->allocatepool(efiloaderdata, kernelfileinfo.filesize, &kerneldata);
     kernelfile->read(kernelfile, &(kernelfileinfo.filesize), kerneldata);
     kernelfile->close(kernelfile);
 
@@ -455,7 +455,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     // Add space for an extra 2 entries
     // Allocating memory is gonna add a new desc
     memmapsize += descsize * 2;
-    systab->bservices->allocatepool(lip->imgdatatype, memmapsize, &memmap);
+    systab->bservices->allocatepool(efiloaderdata, memmapsize, &memmap);
     systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
     // Time to become independent
@@ -463,15 +463,47 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     // We should be on our own now. Time to learn how this memmap works
     // For learning purposes, I must print the memory map
-
-    for(unsigned long long i = 0; i < (memmapsize / descsize); i++) {
-        //
-    }
-
-    /*
-
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
+
+    const unsigned long long entries = memmapsize / descsize;
+    for(unsigned long long i = 0; i < entries; i++) {
+        efimemdesc_t* memmapentry = &(memmap[i]);
+        switch(memmapentry->type) {
+            // Not usable
+            case efireservedmem:
+            case efiloadercode:
+            case efiloaderdata:
+            case efirtscode:
+            case efirtsdata:
+            case efimaxmemtype:
+            case efiunusablemem:
+            case efiacpireclaimmem:
+            case efiacpimemnvs:
+            case efimemmappedio:
+            case efimemmappedioport:
+            case efipalcode:
+            case efipersistmem:
+            case efiunacceptedmem:
+            {
+                break;
+            }
+
+            // usable
+            case efibscode:
+            case efibsdata:
+            case eficonvetmem:
+            {
+                //
+            }
+            default: break;
+        }
+        wstrscr("|");
+    }
+
+    asm volatile("hlt");
+
+    /*
     int i;
     for(phdr = (elf64phdr_t*)(kerneldata + elf->phoff), i = 0; i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
         if(phdr->ptype == PTLOAD) {
