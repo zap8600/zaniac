@@ -284,16 +284,34 @@ typedef struct efisfsprot_t {
 //Screen
 efigop_t* gop = (void*)0;
 
+void clearscr() {
+    for(unsigned int y = 0; y < gop->mode->info->vres; y++) {
+        for(unsigned int x = 0; x < gop->mode->info->hres; x++) {
+            gop->mode->fbbase[(y * gop->mode->info->pixperscanline) + x] = 0x00000000;
+        }
+    }
+}
+
 unsigned int cx = 0;
 unsigned int cy = 0;
 void wchscr(const char c) {
     if(c == '\n') {
         cx = 0;
-        cy += 16;
+        if((cy + 16) >= gop->mode->info->vres) {
+            clearscr();
+            cy = 0;
+        } else {
+            cy += 16;
+        }
     } else {
         if((gop->mode->info->hres - cx) < 8) {
             cx = 0;
-            cy += 16;
+            if((cy + 16) >= gop->mode->info->vres) {
+                clearscr();
+                cy = 0;
+            } else {
+                cy += 16;
+            }
         }
         for(unsigned int cb = 0; cb < 16; cb++) {
             const unsigned char ch = VGA8_F16[(c * 16) + cb];
@@ -425,6 +443,33 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     bootparams.vres = gop->mode->info->vres;
     bootparams.pitch = gop->mode->info->pixperscanline;
 
+    // get initial memmap size
+    efimemdesc_t* memmap = (void*)0;
+    unsigned long long memmapsize = 0;
+    unsigned long long mapkey = 0;
+    unsigned long long descsize = 0;
+    unsigned int descversion = 0;
+    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
+
+    // Allocate memory for the memory map
+    // Add space for an extra 2 entries
+    // Allocating memory is gonna add a new desc
+    memmapsize += descsize * 2;
+    systab->bservices->allocatepool(lip->imgdatatype, memmapsize, &memmap);
+    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
+
+    // Time to become independent
+    status = systab->bservices->exitbootservices(image, mapkey);
+
+    // We should be on our own now. Time to learn how this memmap works
+    // For learning purposes, I must print the memory map
+
+    for(unsigned long long i = 0; i < (memmapsize / descsize); i++) {
+        //
+    }
+
+    /*
+
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
     int i;
@@ -466,6 +511,8 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
 
     while(1) asm volatile("hlt");
+
+    */
 
     return 0;
 }
