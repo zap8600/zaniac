@@ -31,7 +31,7 @@ void kernelmain(sysparam_t* bootparams) {
     memcpy(&params, bootparams, sizeof(sysparam_t));
     initdisp(params.framebuffer, params.hres, params.vres, params.pitch);
     initgdt();
-    initidt();
+    //initidt();
     drawcheckerboardpattern(0x0000ffff);
     char cpuidbuf[13] = {0};
     unsigned int a = 0;
@@ -47,7 +47,7 @@ void kernelmain(sysparam_t* bootparams) {
     memcpy(&(cpuidbuf[8]), &c, 4);
     wstrscr(&(cpuidbuf[0]));
     wchscr('\n');
-    asm volatile("int $3");
-    wstrscr("Still running!\n");
+    //asm volatile("int $3");
+    //wstrscr("Still running!\n");
     while(1) asm volatile("hlt");
 }

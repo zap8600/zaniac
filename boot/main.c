@@ -386,6 +386,29 @@ typedef struct elf64phdr_t {
 unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
 efifilehandle_t filedata = {0};
 
+char* numtostr(unsigned int val, unsigned int base) {
+    unsigned char neg = 0;
+    if(((signed int)val) < 0) {
+        neg = 1;
+        val = abs(val);
+    }
+    static char buf[32] = {0};
+    if(!val) {
+        buf[30] = '0';
+        return &buf[30];
+    }
+    unsigned int i = 30;
+    for(; val && i; i--, val /= base) {
+        buf[i] = "0123456789abcdef"[val % base];
+    }
+    if(neg) {
+        buf[i] = '-';
+        return &buf[i];
+    } else {
+        return &buf[i + 1];
+    }
+}
+
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     // Set up SSE
     __asm__ __volatile__ (
@@ -458,6 +481,8 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     systab->bservices->allocatepool(efiloaderdata, memmapsize, &memmap);
     systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
+    // TODO: Check to see if we allocated 1 too many entries
+
     // Time to become independent
     status = systab->bservices->exitbootservices(image, mapkey);
 
@@ -466,9 +491,11 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
 
+    // TODO: Set up some page table
+
     const unsigned long long entries = memmapsize / descsize;
-    for(unsigned long long i = 0; i < entries; i++) {
-        efimemdesc_t* memmapentry = &(memmap[i]);
+    for(unsigned long long j = 0; j < entries; j++) {
+        efimemdesc_t* memmapentry = &(memmap[j]);
         switch(memmapentry->type) {
             // Not usable
             case efireservedmem:
@@ -493,12 +520,16 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
             case efibscode:
             case efibsdata:
             case eficonvetmem:
+            default:
             {
-                //
+                efimemdesc_t* nextmemmapentry = &(memmapentry)
+                unsigned long long i;
+                for(phdr = (elf64phdr_t*)(kerneldata + elf->phoff), i = 0; i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
+                    if(phdr->ptype == PTLOAD) {
+                    }
+                }
             }
-            default: break;
         }
-        wstrscr("|");
     }
 
     asm volatile("hlt");
