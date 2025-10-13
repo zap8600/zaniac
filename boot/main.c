@@ -554,11 +554,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
                             currentoffset += 4096;
                             wstrscr("Block found!\n");
                         }
-                        unsigned long long ptvalue = 0;
-                        ptvalue |= (entryaddress + j) & 0xfffffffffffff000;
-                        ptvalue &= 0x0007fffffffff000;
-                        ptvalue |= 0x3;
-                        pt[ptmarker] = ptvalue;
+                        pt[ptmarker] = (entryaddress + j) | 0x3;
                     }
                 } else {
                     // Last entry in memory map, we can copy in as much as we want (hopefully)
@@ -572,23 +568,9 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     void* entry = (void*)(elf->entry);
 
-    unsigned long long pdvalue = 0;
-    pdvalue |= ((unsigned long long)&(pt[0])) & 0xfffffffffffff000;
-    pdvalue &= 0x0007fffffffff000;
-    pdvalue |= 0x3;
-    pd[0] = pdvalue;
-
-    unsigned long long pdptvalue = 0;
-    pdptvalue |= ((unsigned long long)&(pd[0])) & 0xfffffffffffff000;
-    pdptvalue &= 0x0007fffffffff000;
-    pdptvalue |= 0x3;
-    pdpt[0] = pdptvalue;
-
-    unsigned long long pml4value = 0;
-    pml4value |= ((unsigned long long)&(pdpt[0])) & 0xfffffffffffff000;
-    pml4value &= 0x0007fffffffff000;
-    pml4value |= 0x3;
-    pml4[0] = pml4value;
+    pd[0] = ((unsigned long long)&(pt[0])) | 0x3;
+    pdpt[0] = ((unsigned long long)&(pd[0])) | 0x3;
+    pml4[0] = ((unsigned long long)&(pdpt[0])) | 0x3;
 
     asm volatile("movq %0, %%cr3" : : "b"((unsigned long long)&(pml4[0])));
 
