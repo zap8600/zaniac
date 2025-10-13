@@ -10,6 +10,7 @@ asm.o\
 gdt.o\
 idt.o\
 pic.o\
+io.o\
 
 .PHONY: clean
 .SUFFIXES: .o .c .s

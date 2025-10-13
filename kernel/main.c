@@ -4,6 +4,7 @@
 #include "disp.h"
 #include "string.h"
 #include "asm.h"
+#include "io.h"
 
 sysparam_t params;
 
@@ -26,14 +27,15 @@ void start() {
     );
 }
 
+char cpuidbuf[13] = {1};
+
 void kernelmain(sysparam_t* bootparams) {
     asm volatile("cli");
     memcpy(&params, bootparams, sizeof(sysparam_t));
-    initdisp(params.framebuffer, params.hres, params.vres, params.pitch);
-    initgdt();
+    //initdisp(params.framebuffer, params.hres, params.vres, params.pitch);
+    //initgdt();
     //initidt();
-    drawcheckerboardpattern(0x0000ffff);
-    char cpuidbuf[13] = {0};
+    //drawcheckerboardpattern(0x0000ffff);
     unsigned int a = 0;
     unsigned int b = 0;
     unsigned int c = 0;
@@ -45,9 +47,14 @@ void kernelmain(sysparam_t* bootparams) {
     memcpy(&(cpuidbuf[0]), &b, 4);
     memcpy(&(cpuidbuf[4]), &d, 4);
     memcpy(&(cpuidbuf[8]), &c, 4);
-    wstrscr(&(cpuidbuf[0]));
-    wchscr('\n');
+    cpuidbuf[12] = '\0';
+    while(1) {
+        wstrcom1(&(cpuidbuf[0]));
+        wchcom1('\n');
+    }
+    //wstrscr(&(cpuidbuf[0]));
+    //wchscr('\n');
     //asm volatile("int $3");
     //wstrscr("Still running!\n");
-    while(1) asm volatile("hlt");
+    //while(1) asm volatile("hlt");
 }
