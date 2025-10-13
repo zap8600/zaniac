@@ -489,13 +489,21 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     // We should be on our own now. Time to learn how this memmap works
     // For learning purposes, I must print the memory map
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
-    elf64phdr_t *phdr = (void*)0;
+    elf64phdr_t *phdr = (elf64phdr_t*)(kerneldata + elf->phoff);
+    while(phdr->ptype != PTLOAD) {
+        phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize);
+    }
+    unsigned long long currentsection = 1;
+    unsigned long long currentoffset = 0;
+    // unsigned long long currentblock = 0;
 
     // TODO: Set up some page table
 
     const unsigned long long entries = memmapsize / descsize;
-    for(unsigned long long j = 0; j < entries; j++) {
-        efimemdesc_t* memmapentry = &(memmap[j]);
+    for(unsigned long long i = 0; i < entries; i++) {
+        if(currentsection > elf->phnum) break;
+        efimemdesc_t* memmapentry = &(memmap[i]);
+        const unsigned long long entryaddress = (memmapentry->virtualstart + (memmapentry->virtualstart % 4096));
         switch(memmapentry->type) {
             // Not usable
             case efireservedmem:
@@ -522,12 +530,15 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
             case eficonvetmem:
             default:
             {
-                efimemdesc_t* nextmemmapentry = &(memmapentry)
-                unsigned long long i;
-                for(phdr = (elf64phdr_t*)(kerneldata + elf->phoff), i = 0; i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
-                    if(phdr->ptype == PTLOAD) {
+                if(i < (entries - 1)) {
+                    efimemdesc_t* nextmemmapentry = &(memmapentry[i + 1]);
+                    unsigned long long regionsize = nextmemmapentry->virtualstart - entryaddress;
+                    if(regionsize < 4096) break;
+                    for(unsigned int j = 0; (regionsize - j) >= 4096; j += 4096) {
+                        //
                     }
                 }
+                break;
             }
         }
     }
