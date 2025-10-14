@@ -19,6 +19,9 @@ uefi.img: subdirs
 run: uefi.img
 	qemu-system-x86_64 -cpu qemu64 -drive file=uefi.img,if=ide -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log
 
+debug: uefi.img
+	qemu-system-x86_64 -cpu qemu64 -s -S uefi.img -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log
+
 clean:
 	rm -f uefi.img
 	make -C boot clean

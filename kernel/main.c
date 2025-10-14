@@ -11,8 +11,8 @@ sysparam_t params;
 __attribute__((naked))
 void start() {
     asm volatile(
-        "mov $stacktop, %rsp\n"
-        "call kernelmain\n"
+        // "mov $stacktop, %rsp\n"
+        // "call kernelmain\n"
         "cli\n"
         "1:\n"
         "hlt\n"
@@ -27,11 +27,12 @@ void start() {
     );
 }
 
-char cpuidbuf[13] = {1};
+char cpuidbuf[13] = {0};
 
-void kernelmain(sysparam_t* bootparams) {
+/*
+void kernelmain() {
     asm volatile("cli");
-    memcpy(&params, bootparams, sizeof(sysparam_t));
+    //memcpy(&params, bootparams, sizeof(sysparam_t));
     //initdisp(params.framebuffer, params.hres, params.vres, params.pitch);
     //initgdt();
     //initidt();
@@ -47,7 +48,7 @@ void kernelmain(sysparam_t* bootparams) {
     memcpy(&(cpuidbuf[0]), &b, 4);
     memcpy(&(cpuidbuf[4]), &d, 4);
     memcpy(&(cpuidbuf[8]), &c, 4);
-    cpuidbuf[12] = '\0';
+    // cpuidbuf[12] = '\0';
     while(1) {
         wstrcom1(&(cpuidbuf[0]));
         wchcom1('\n');
@@ -58,3 +59,4 @@ void kernelmain(sysparam_t* bootparams) {
     //wstrscr("Still running!\n");
     //while(1) asm volatile("hlt");
 }
+*/

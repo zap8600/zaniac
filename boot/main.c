@@ -394,10 +394,21 @@ typedef struct elf64phdr_t {
 unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
 efifilehandle_t filedata = {0};
 
-unsigned long long* pml4;
-unsigned long long* pdpt;
-unsigned long long* pd;
-unsigned long long* pt;
+unsigned long long pml4[512] __attribute__((aligned(4096))) = {0};
+unsigned long long pdpt[512] __attribute__((aligned(4096))) = {0};
+unsigned long long pd[512] __attribute__((aligned(4096))) = {0};
+unsigned long long pd1[512] __attribute__((aligned(4096))) = {0};
+unsigned long long pt[512] __attribute__((aligned(4096)));
+
+void outb(unsigned short int port, unsigned char value) {
+    asm volatile("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
+}
+
+unsigned char inb(unsigned short int port) {
+    unsigned char ret;
+    asm volatile("inb %w1, %b0" : "=a"(ret) : "Nd"(port) : "memory");
+    return ret;
+}
 
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     // Set up SSE
@@ -456,24 +467,21 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     bootparams.vres = gop->mode->info->vres;
     bootparams.pitch = gop->mode->info->pixperscanline;
 
-    // get initial memmap size
-    // efimemdesc_t* memmap = (void*)0;
-    // unsigned long long memmapsize = 0;
-    // unsigned long long mapkey = 0;
-    // unsigned long long descsize = 0;
-    // unsigned int descversion = 0;
-    // systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
-
-    // Allocate memory for the memory map
-    // Add space for an extra 2 entries
-    // Allocating memory is gonna add a new desc
-    // memmapsize += descsize * 2;
-    // systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
-    // systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
-
     // TODO: Check to see if we allocated 1 too many entries
 
-    systab->bservices->allocatepages(efiallocany);
+    // systab->bservices->allocatepages(efiallocany, efiloaderdata, 1, &pml4);
+    // systab->bservices->allocatepages(efiallocany, efiloaderdata, 1, &pdpt);
+    // systab->bservices->allocatepages(efiallocany, efiloaderdata, 1, &pd);
+    // systab->bservices->allocatepages(efiallocany, efiloaderdata, 1, &pd1);
+    // systab->bservices->allocatepages(efiallocany, efiloaderdata, 1, &pt);
+    // systab->bservices->allocatepages(efiallocany, efiloaderdata, 1, &pt1);
+
+    // memset(pml4, 0, 4096);
+    // memset(pdpt, 0, 4096);
+    // memset(pd, 0, 4096);
+    // memset(pd1, 0, 4096);
+    // memset(pt, 0, 4096);
+    // memset(pt1, 0, 4096);
 
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
@@ -483,24 +491,29 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     pt[ptmarker++] = ((unsigned long long)&(pml4[0])) | 0x3;
     pt[ptmarker++] = ((unsigned long long)&(pdpt[0])) | 0x3;
     pt[ptmarker++] = ((unsigned long long)&(pd[0])) | 0x3;
+    pt[ptmarker++] = ((unsigned long long)&(pd1[0])) | 0x3;
     pt[ptmarker++] = ((unsigned long long)&(pt[0])) | 0x3;
+    // pt[ptmarker++] = ((unsigned long long)&(pt1[0])) | 0x3;
 
     unsigned long long i;
     for(i = 0, phdr = (elf64phdr_t*)(kerneldata + elf->phoff); i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
-        if(phdr->ptype = PTLOAD) {
-            void* sectionptr = (void*)0;
-            systab->bservices->allocatepages(efiallocany, efiloaderdata, phdr->memsize / 4096, &sectionptr);
-            memcpy(sectionptr, kerneldata + phdr->offset, phdr->filesize);
-            memset(sectionptr + phdr->filesize, 0, phdr->memsize - phdr->filesize);
-            pt[ptmarker++] = ((unsigned long long)sectionptr) | 0x3;
+        if(phdr->ptype == PTLOAD) {
+            //void* sectionptr = (void*)0;
+            //systab->bservices->allocatepages(efiallocany, efiloaderdata, phdr->memsize / 4096, &sectionptr);
+            //memcpy(sectionptr, kerneldata + phdr->offset, phdr->filesize);
+            //memset(sectionptr + phdr->filesize, 0, phdr->memsize - phdr->filesize);
+            //pt[ptmarker++] = ((unsigned long long)sectionptr) | 0x3;
         }
     }
 
-    pd[0] = ((unsigned long long)&(pt[0])) | 0x3;
-    pdpt[3] = ((unsigned long long)&(pd[0])) | 0x3; // Index of 3 for 3GB 
+    for(i = 0; i < 512; i++) {
+        // Identity map 1GB so our bootloader keeps running 
+        pd[i] = (i * (2 * 1024 * 1024)) | 0x83;
+    }
+    pd1[0] = ((unsigned long long)&(pt[0])) | 0x3;
+    pdpt[0] = ((unsigned long long)&(pd[0])) | 0x3;
+    // pdpt[3] = ((unsigned long long)&(pd1[0])) | 0x3; // Index of 3 for 3GB mark
     pml4[0] = ((unsigned long long)&(pdpt[0])) | 0x3;
-
-    // TODO: Set up some page table
 
     // const unsigned long long entries = memmapsize / descsize;
     // for(unsigned long long i = 0; i < entries; i++) {
@@ -535,6 +548,32 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     //         }
     //     }
     // }
+
+    // get initial memmap size
+    efimemdesc_t* memmap = (void*)0;
+    unsigned long long memmapsize = 0;
+    unsigned long long mapkey = 0;
+    unsigned long long descsize = 0;
+    unsigned int descversion = 0;
+    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
+
+    // Allocate memory for the memory map
+    // Add space for an extra 2 entries
+    // Allocating memory is gonna add a new desc
+    memmapsize += descsize * 2;
+    systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
+    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
+
+    systab->bservices->exitbootservices(image, mapkey);
+
+    asm volatile ("1: jmp 1b");
+
+    asm volatile("cli; movq %0, %%cr3" : : "b"(&(pml4[0])));
+
+    asm volatile ("1: jmp 1b");
+
+    //asm volatile("int $3");
+    //wstrscr("We're still running!\n");
 
     asm volatile("hlt");
 
