@@ -394,10 +394,10 @@ typedef struct elf64phdr_t {
 unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
 efifilehandle_t filedata = {0};
 
-unsigned long long pml4[512] __attribute__((aligned(4096))) = {0};
-unsigned long long pdpt[512] __attribute__((aligned(4096))) = {0};
-unsigned long long pd[512] __attribute__((aligned(4096))) = {0};
-unsigned long long pt[512] __attribute__((aligned(4096))) = {0};
+unsigned long long* pml4;
+unsigned long long* pdpt;
+unsigned long long* pd;
+unsigned long long* pt;
 
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     // Set up SSE
@@ -473,19 +473,32 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     // TODO: Check to see if we allocated 1 too many entries
 
+    systab->bservices->allocatepages(efiallocany);
+
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
 
-    unsigned long long a;
+    unsigned long long ptmarker = 0;
+
+    pt[ptmarker++] = ((unsigned long long)&(pml4[0])) | 0x3;
+    pt[ptmarker++] = ((unsigned long long)&(pdpt[0])) | 0x3;
+    pt[ptmarker++] = ((unsigned long long)&(pd[0])) | 0x3;
+    pt[ptmarker++] = ((unsigned long long)&(pt[0])) | 0x3;
 
     unsigned long long i;
     for(i = 0, phdr = (elf64phdr_t*)(kerneldata + elf->phoff); i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
         if(phdr->ptype = PTLOAD) {
             void* sectionptr = (void*)0;
             systab->bservices->allocatepages(efiallocany, efiloaderdata, phdr->memsize / 4096, &sectionptr);
-            // Map this to the page table
+            memcpy(sectionptr, kerneldata + phdr->offset, phdr->filesize);
+            memset(sectionptr + phdr->filesize, 0, phdr->memsize - phdr->filesize);
+            pt[ptmarker++] = ((unsigned long long)sectionptr) | 0x3;
         }
     }
+
+    pd[0] = ((unsigned long long)&(pt[0])) | 0x3;
+    pdpt[3] = ((unsigned long long)&(pd[0])) | 0x3; // Index of 3 for 3GB 
+    pml4[0] = ((unsigned long long)&(pdpt[0])) | 0x3;
 
     // TODO: Set up some page table
 
