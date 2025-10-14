@@ -78,6 +78,14 @@ typedef struct efimemdesc_t {
     unsigned long long attr;
 } efimemdesc_t;
 
+typedef enum efialloctype_t {
+    efiallocany,
+    efimaxaddr,
+    efiaddr,
+    efimaxalloctype
+} efialloctype_t;
+
+typedef unsigned long long (*efiallocpages_t)(efialloctype_t type, efimemtype_t memtype, unsigned long long pages, void* mem);
 typedef unsigned long long (*efihandleprot_t)(void* handle, efiguid_t* prot, void** interface);
 typedef unsigned long long (*efiallocpool_t)(efimemtype_t memtype, unsigned long long size, void** ret);
 typedef unsigned long long (*efifreepool_t)(void* buf);
@@ -90,7 +98,7 @@ typedef struct efibservices_t {
     void* raisetpl;
     void* restoretpl;
 
-    void* allocatepages;
+    efiallocpages_t allocatepages;
     void* freepages;
     efigetmemmap_t getmemorymap;
     efiallocpool_t allocatepool;
@@ -449,130 +457,71 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     bootparams.pitch = gop->mode->info->pixperscanline;
 
     // get initial memmap size
-    efimemdesc_t* memmap = (void*)0;
-    unsigned long long memmapsize = 0;
-    unsigned long long mapkey = 0;
-    unsigned long long descsize = 0;
-    unsigned int descversion = 0;
-    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
+    // efimemdesc_t* memmap = (void*)0;
+    // unsigned long long memmapsize = 0;
+    // unsigned long long mapkey = 0;
+    // unsigned long long descsize = 0;
+    // unsigned int descversion = 0;
+    // systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
     // Allocate memory for the memory map
     // Add space for an extra 2 entries
     // Allocating memory is gonna add a new desc
-    memmapsize += descsize * 2;
-    systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
-    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
+    // memmapsize += descsize * 2;
+    // systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
+    // systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
     // TODO: Check to see if we allocated 1 too many entries
 
-    // Time to become independent
-    status = systab->bservices->exitbootservices(image, mapkey);
-
-    // We should be on our own now. Time to learn how this memmap works
-    // For learning purposes, I must print the memory map
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
-    elf64phdr_t *phdr = (elf64phdr_t*)(kerneldata + elf->phoff);
-    while(phdr->ptype != PTLOAD) {
-        phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize);
-    }
-    unsigned long long currentsection = 1;
-    unsigned long long currentoffset = 0;
-    // unsigned long long currentblock = 0;
+    elf64phdr_t *phdr = (void*)0;
 
-    unsigned long long ptmarker = 0;
+    unsigned long long a;
+
+    unsigned long long i;
+    for(i = 0, phdr = (elf64phdr_t*)(kerneldata + elf->phoff); i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
+        if(phdr->ptype = PTLOAD) {
+            void* sectionptr = (void*)0;
+            systab->bservices->allocatepages(efiallocany, efiloaderdata, phdr->memsize / 4096, &sectionptr);
+            // Map this to the page table
+        }
+    }
 
     // TODO: Set up some page table
 
-    const unsigned long long entries = memmapsize / descsize;
-    for(unsigned long long i = 0; i < entries; i++) {
-        if(currentsection > elf->phnum) break;
-        efimemdesc_t* memmapentry = &(memmap[i]);
-        const unsigned long long entryaddress = (memmapentry->virtualstart + (memmapentry->virtualstart % 4096)); // This should align it to 4KB
-        if(!(entryaddress % 4096)) {
-            wstrscr("Entry is on 4KB boundary!\n");
-        }
-        switch(memmapentry->type) {
-            // Not usable
-            case efireservedmem:
-            case efiloadercode:
-            case efiloaderdata:
-            case efirtscode:
-            case efirtsdata:
-            case efimaxmemtype:
-            case efiunusablemem:
-            case efiacpireclaimmem:
-            case efiacpimemnvs:
-            case efimemmappedio:
-            case efimemmappedioport:
-            case efipalcode:
-            case efipersistmem:
-            case efiunacceptedmem:
-            {
-                break;
-            }
+    // const unsigned long long entries = memmapsize / descsize;
+    // for(unsigned long long i = 0; i < entries; i++) {
+    //     efimemdesc_t* memmapentry = &(memmap[i]);
+    //     switch(memmapentry->type) {
+    //         // Not usable
+    //         case efireservedmem:
+    //         case efiloadercode:
+    //         case efiloaderdata:
+    //         case efirtscode:
+    //         case efirtsdata:
+    //         case efimaxmemtype:
+    //         case efiunusablemem:
+    //         case efiacpireclaimmem:
+    //         case efiacpimemnvs:
+    //         case efimemmappedio:
+    //         case efimemmappedioport:
+    //         case efipalcode:
+    //         case efipersistmem:
+    //         case efiunacceptedmem:
+    //         {
+    //             break;
+    //         }
 
-            // usable
-            case efibscode:
-            case efibsdata:
-            case eficonvetmem:
-            default:
-            {
-                if(i < (entries - 1)) {
-                    efimemdesc_t* nextmemmapentry = &(memmapentry[i + 1]);
-                    unsigned long long regionsize = nextmemmapentry->virtualstart - entryaddress;
-                    if(regionsize < 4096) {
-                        wstrscr("Entry is too small! Next\n");
-                        continue;
-                    }
-                    for(unsigned int j = 0; (regionsize - j) >= 4096; j += 4096, ptmarker++) {
-                        if(currentsection > elf->phnum) break;
-                        if(!(phdr->filesize - currentoffset)) {
-                            wstrscr("Section has no more data!\n");
-                            currentoffset = 0;
-                            phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize);
-                            currentsection++;
-                            while((phdr->ptype != PTLOAD) && (currentsection <= elf->phnum)) {
-                                phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize);
-                                currentsection++;
-                                wstrscr("Skipping section!\n");
-                            }
-                        }
-                        if(!((phdr->filesize - currentoffset) / 4096)) {
-                            memcpy((void*)(entryaddress + j), (kerneldata + phdr->offset) + currentoffset, (phdr->filesize - currentoffset));
-                            memset((void*)((entryaddress + j) + (phdr->filesize - currentoffset)), 0, phdr->memsize - phdr->filesize);
-                            wstrscr("Block found! Next section\n");
-                            currentoffset = 0;
-                            phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize);
-                            currentsection++;
-                            while((phdr->ptype != PTLOAD) && (currentsection <= elf->phnum)) {
-                                phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize);
-                                currentsection++;
-                                wstrscr("Skipping section!\n");
-                            }
-                        } else {
-                            memcpy((void*)(entryaddress + j), (kerneldata + phdr->offset) + currentoffset, 4096);
-                            currentoffset += 4096;
-                            wstrscr("Block found!\n");
-                        }
-                        pt[ptmarker] = (entryaddress + j) | 0x3;
-                    }
-                } else {
-                    // Last entry in memory map, we can copy in as much as we want (hopefully)
-                    wstrscr("Reached end of memory map!\n");
-                    currentsection = elf->phnum + 1; // For testing purposes
-                }
-                break;
-            }
-        }
-    }
-
-    void* entry = (void*)(elf->entry);
-
-    pd[0] = ((unsigned long long)&(pt[0])) | 0x3;
-    pdpt[0] = ((unsigned long long)&(pd[0])) | 0x3;
-    pml4[0] = ((unsigned long long)&(pdpt[0])) | 0x3;
-
-    asm volatile("movq %0, %%cr3" : : "b"((unsigned long long)&(pml4[0])));
+    //         // usable
+    //         case efibscode:
+    //         case efibsdata:
+    //         case eficonvetmem:
+    //         default:
+    //         {
+    //             break;
+    //         }
+    //     }
+    // }
 
     asm volatile("hlt");
 
