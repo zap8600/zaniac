@@ -2,27 +2,27 @@
 #include "disp.h"
 #include "pic.h"
 
-struct regs_t {
+typedef struct regs_t {
     // Automatically pushed by the interrupt
     unsigned long long ip;
     unsigned long long cs;
     unsigned long long flags;
     unsigned long long sp;
     unsigned long long ss;
-};
+} regs_t;
 
 __attribute__((no_caller_saved_registers))
-void inthandler(unsigned char interruptnum, unsigned char error);
+void inthandler(unsigned char interruptnum, unsigned long error);
 
 #define ISRNOERR(index) \
 __attribute__((interrupt)) \
-void isr ## index() { \
+void isr ## index(regs_t* r) { \
     inthandler(index, 0); \
 }
 
 #define ISRERR(index) \
 __attribute__((interrupt)) \
-void isr ## index() { \
+void isr ## index(regs_t* r, unsigned long code) { \
     inthandler(index, 1); \
 }
 
@@ -139,7 +139,7 @@ void initidt() {
     asm volatile("sti");
 }
 
-void inthandler(unsigned char interruptnum, unsigned char error) {
+void inthandler(unsigned char interruptnum, unsigned long error) {
     if(interruptnum == 3) {
         wstrscr("Hello, breakpoint!\n");
     } else {
