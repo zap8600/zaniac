@@ -1,4 +1,4 @@
-.PHONY: subdirs clean run
+.PHONY: subdirs clean run headless headlessdebug
 
 subdirs:
 	make -C boot main.efi
@@ -19,8 +19,14 @@ uefi.img: subdirs
 run: uefi.img
 	qemu-system-x86_64 -cpu qemu64 -drive file=uefi.img,if=ide -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log
 
+headless: uefi.img
+	qemu-system-x86_64 -cpu qemu64 -drive file=uefi.img,if=ide -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log -vnc :1
+
 debug: uefi.img
 	qemu-system-x86_64 -cpu qemu64 -s -S uefi.img -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log
+
+headlessdebug: uefi.img
+	qemu-system-x86_64 -cpu qemu64 -s -S uefi.img -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log -vnc :1
 
 clean:
 	rm -f uefi.img

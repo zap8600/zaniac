@@ -420,6 +420,30 @@ unsigned long long pd[512] __attribute__((aligned(4096))) = {0};
 #define PAGERW 0x2 // Read/Write flag
 #define PAGEP 0x1 // Present flag
 
+inline void outb(unsigned short int port, unsigned char value) {
+    asm volatile("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
+}
+
+inline unsigned char inb(unsigned short int port) {
+    unsigned char ret;
+    asm volatile("inb %w1, %b0" : "=a"(ret) : "Nd"(port) : "memory");
+    return ret;
+}
+
+#define COM1 0x3f8
+
+inline void wchcom1(const char c) {
+    while(!(inb(COM1 + 5) & 0x20)) {}
+    outb(COM1, c);
+}
+
+inline void wstrcom1(const char* s) {
+    char c = 0;
+    while((c = *s++)) {
+        wchcom1(c);
+    }
+}
+
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     // Set up SSE
     __asm__ __volatile__ (
@@ -564,10 +588,12 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     asm volatile ("1: jmp 1b");
 
+    while(1) {
+        wstrcom1("We are still running!\n");
+    }
+
     //asm volatile("int $3");
     //wstrscr("We're still running!\n");
-
-    asm volatile("hlt");
 
     /*
     int i;
