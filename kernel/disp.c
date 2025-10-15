@@ -2,7 +2,7 @@
 #include "string.h"
 #include "../font/VGA8.h"
 
-static void* framebuffer;
+static const void* framebuffer = (void*)0x80000000ULL; // 2GB
 static unsigned int hres;
 static unsigned int vres;
 static unsigned int pitch;
@@ -15,6 +15,8 @@ void clearscr() {
             ((unsigned int*)(framebuffer))[(y * pitch) + x] = 0x00000000;
         } 
     }
+    //
+    return;
 }
 
 unsigned int cx = 0;
@@ -73,8 +75,7 @@ void drawcheckerboardpattern(unsigned int color) {
     }
 }
 
-void initdisp(void* fb, unsigned int hr, unsigned int vr, unsigned int p) {
-    framebuffer = fb;
+void initdisp(unsigned int hr, unsigned int vr, unsigned int p) {
     hres = hr;
     vres = vr;
     pitch = p;

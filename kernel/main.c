@@ -30,7 +30,7 @@ char cpuidbuf[13] = {0};
 
 void kernelmain(sysparam_t* bootparams) {
     memcpy(&params, bootparams, sizeof(sysparam_t));
-    initdisp(params.framebuffer, params.hres, params.vres, params.pitch);
+    initdisp(params.hres, params.vres, params.pitch);
     //initgdt();
     //initidt();
     //drawcheckerboardpattern(0x0000ffff);

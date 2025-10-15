@@ -497,42 +497,28 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     kernelfile->close(kernelfile);
 
     sysparam_t bootparams = {0};
-    bootparams.framebuffer = (void*)(2 * 1024 * 1024 * 1024); // We set our framebuffer to the 2GB mark
     bootparams.hres = gop->mode->info->hres;
     bootparams.vres = gop->mode->info->vres;
     bootparams.pitch = gop->mode->info->pixperscanline;
     bootparams.size = gop->mode->fbsize;
 
-    wstrscr("Framebuffer pointer: ");
-    wstrscr(ptrtostr((unsigned long long)(gop->mode->fbbase)));
-    wchscr('\n');
     if((((unsigned long long)(gop->mode->fbbase)) % PAGE2M)) {
         wstrscr("Warning: Framebuffer pointer is not aligned on a 2MB boundary!\n");
     }
 
     // TODO: Check to see if we allocated 1 too many entries
 
-    wstrscr("Kernel data: ");
-    wstrscr(ptrtostr((unsigned long long)kerneldata));
-    wchscr('\n');
-
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
 
     if(!(elf->entry)) {
         wstrscr("Warning: No entry!\n");
-    } else {
-        wstrscr(ptrtostr((elf->entry)));
-        wchscr('\n');
     }
 
     void* entry = (void*)(elf->entry);
 
     if(!(entry)) {
         wstrscr("Warning: No entry!\n");
-    } else {
-        wstrscr(ptrtostr((unsigned long long)(entry)));
-        wchscr('\n');
     }
 
     unsigned long long ptmarker = 0;
@@ -547,15 +533,28 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     unsigned long long i;
     for(i = 0, phdr = (elf64phdr_t*)(kerneldata + elf->phoff); i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
+        //wstrscr("Section!\n");
         if(phdr->ptype == PTLOAD) {
-            wstrscr("Writing section!\n");
+            unsigned long long sectionpages = phdr->memsize / PAGE4K;
+            if(sectionpages % PAGE4K) sectionpages++;
+            if((!sectionpages) && (phdr->memsize)) sectionpages++;
             void* sectionptr = (void*)0;
-            systab->bservices->allocatepages(efiallocany, efiloaderdata, phdr->memsize / PAGE4K, &sectionptr);
+            status = systab->bservices->allocatepages(efiallocany, efiloaderdata, sectionpages, &sectionptr);
+            if(EFIERROR(status)) {
+                wstrscr("Error when allocating pages!\n");
+            }
+            // wstrscr(ptrtostr((unsigned long long)sectionptr));
+            // wchscr('\n');
+            // wstrscr(ptrtostr(phdr->memsize));
+            // wchscr('\n');
+            // wstrscr(ptrtostr(sectionpages));
+            // wchscr('\n');
             memcpy(sectionptr, kerneldata + phdr->offset, phdr->filesize);
             memset(sectionptr + phdr->filesize, 0, phdr->memsize - phdr->filesize);
             // pt[ptmarker++] = ((unsigned long long)sectionptr) | (PAGERW | PAGEP);
-            for(unsigned long long j = 0; j < (phdr->memsize / PAGE4K); j++) {
+            for(unsigned long long j = 0; j < sectionpages; j++) {
                 pt[ptmarker++] = ((unsigned long long)(sectionptr + (j * PAGE4K))) | (PAGERW | PAGEP);
+                wstrscr("Writing section!\n");
             }
         }
     }
@@ -635,24 +634,13 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     asm volatile("cli; movq %0, %%cr3" : : "b"(&(pml4[0])));
 
-    wstrscr("Test?\n");
-    wstrscr("Test again?\n");
-
-    // wstrscr("Entry: ");
-    // wstrscr(ptrtostr(elf->entry));
-    // wchscr('\n');
-
-    wstrscr("Wish us luck!\n");
-
     if(!(entry)) {
         wstrscr("Warning: No entry!\n");
-    } else {
-        wstrscr(ptrtostr((unsigned long long)(entry)));
-        wchscr('\n');
     }
 
     asm volatile ("1: jmp 1b");
 
+    // asm volatile ("1: jmp 1b");
     (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
 
     // asm volatile ("1: jmp 1b");
