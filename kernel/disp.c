@@ -78,4 +78,5 @@ void initdisp(void* fb, unsigned int hr, unsigned int vr, unsigned int p) {
     hres = hr;
     vres = vr;
     pitch = p;
+    clearscr();
 }

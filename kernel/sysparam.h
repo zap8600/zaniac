@@ -6,6 +6,7 @@ typedef struct sysparam_t {
     unsigned int hres;
     unsigned int vres;
     unsigned int pitch;
+    unsigned long long size;
 } sysparam_t;
 
 #endif

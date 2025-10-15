@@ -1,6 +1,6 @@
 LDFLAGS = -T linker.ld -nostdlib -z noexecstack
 
-CFLAGS = -ffreestanding -Wall -Wextra -mno-red-zone -g
+CFLAGS = -ffreestanding -Wall -Wextra -mno-red-zone -mcmodel=large -g
 
 OBJS=\
 main.o\

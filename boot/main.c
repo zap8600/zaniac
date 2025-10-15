@@ -409,8 +409,9 @@ efifilehandle_t filedata = {0};
 unsigned long long pml4[512] __attribute__((aligned(4096))) = {0};
 unsigned long long pdpt[512] __attribute__((aligned(4096))) = {0};
 unsigned long long pd[512] __attribute__((aligned(4096))) = {0};
-// unsigned long long pd1[512] __attribute__((aligned(4096))) = {0};
-// unsigned long long pt[512] __attribute__((aligned(4096)));
+unsigned long long pd1[512] __attribute__((aligned(4096))) = {0};
+unsigned long long pd2[512] __attribute__((aligned(4096))) = {0};
+unsigned long long pt[512] __attribute__((aligned(4096))) = {0};
 
 #define PAGE4K (4 * 1024)
 #define PAGE2M (2 * 1024 * 1024)
@@ -496,39 +497,87 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     kernelfile->close(kernelfile);
 
     sysparam_t bootparams = {0};
-    bootparams.framebuffer = gop->mode->fbbase;
+    bootparams.framebuffer = (void*)(2 * 1024 * 1024 * 1024); // We set our framebuffer to the 2GB mark
     bootparams.hres = gop->mode->info->hres;
     bootparams.vres = gop->mode->info->vres;
     bootparams.pitch = gop->mode->info->pixperscanline;
+    bootparams.size = gop->mode->fbsize;
+
+    wstrscr("Framebuffer pointer: ");
+    wstrscr(ptrtostr((unsigned long long)(gop->mode->fbbase)));
+    wchscr('\n');
+    if((((unsigned long long)(gop->mode->fbbase)) % PAGE2M)) {
+        wstrscr("Warning: Framebuffer pointer is not aligned on a 2MB boundary!\n");
+    }
 
     // TODO: Check to see if we allocated 1 too many entries
+
+    wstrscr("Kernel data: ");
+    wstrscr(ptrtostr((unsigned long long)kerneldata));
+    wchscr('\n');
 
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
 
-    // unsigned long long ptmarker = 0;
+    if(!(elf->entry)) {
+        wstrscr("Warning: No entry!\n");
+    } else {
+        wstrscr(ptrtostr((elf->entry)));
+        wchscr('\n');
+    }
 
-    // pt[ptmarker++] = ((unsigned long long)&(pml4[0])) | 0x3;
-    // pt[ptmarker++] = ((unsigned long long)&(pdpt[0])) | 0x3;
-    // pt[ptmarker++] = ((unsigned long long)&(pd[0])) | 0x3;
-    // pt[ptmarker++] = ((unsigned long long)&(pd1[0])) | 0x3;
-    // pt[ptmarker++] = ((unsigned long long)&(pt[0])) | 0x3;
+    void* entry = (void*)(elf->entry);
+
+    if(!(entry)) {
+        wstrscr("Warning: No entry!\n");
+    } else {
+        wstrscr(ptrtostr((unsigned long long)(entry)));
+        wchscr('\n');
+    }
+
+    unsigned long long ptmarker = 0;
+
+    pt[ptmarker++] = ((unsigned long long)&(pml4[0])) | (PAGERW | PAGEP);
+    pt[ptmarker++] = ((unsigned long long)&(pdpt[0])) | (PAGERW | PAGEP);
+    pt[ptmarker++] = ((unsigned long long)&(pd[0])) | (PAGERW | PAGEP);
+    pt[ptmarker++] = ((unsigned long long)&(pd1[0])) | (PAGERW | PAGEP);
+    pt[ptmarker++] = ((unsigned long long)&(pd2[0])) | (PAGERW | PAGEP);
+    pt[ptmarker++] = ((unsigned long long)&(pt[0])) | (PAGERW | PAGEP);
     // pt[ptmarker++] = ((unsigned long long)&(pt1[0])) | 0x3;
 
     unsigned long long i;
     for(i = 0, phdr = (elf64phdr_t*)(kerneldata + elf->phoff); i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
         if(phdr->ptype == PTLOAD) {
-            // TODO: Allocate pages
-            // TODO: Load kernel into said pages
-            // TODO: Map said pages into our new page table
+            wstrscr("Writing section!\n");
+            void* sectionptr = (void*)0;
+            systab->bservices->allocatepages(efiallocany, efiloaderdata, phdr->memsize / PAGE4K, &sectionptr);
+            memcpy(sectionptr, kerneldata + phdr->offset, phdr->filesize);
+            memset(sectionptr + phdr->filesize, 0, phdr->memsize - phdr->filesize);
+            // pt[ptmarker++] = ((unsigned long long)sectionptr) | (PAGERW | PAGEP);
+            for(unsigned long long j = 0; j < (phdr->memsize / PAGE4K); j++) {
+                pt[ptmarker++] = ((unsigned long long)(sectionptr + (j * PAGE4K))) | (PAGERW | PAGEP);
+            }
         }
     }
+
+    unsigned long long fbpages = (gop->mode->fbsize) / PAGE2M;
+    if((gop->mode->fbsize) % PAGE2M) fbpages++;
+    if(fbpages > 512) {
+        wstrscr("Warning: Framebuffer pages are larger than a single page directory!\n");
+    }
+    for(i = 0; i < fbpages; i++) {
+        pd2[i] = (((unsigned long long)(gop->mode->fbbase)) + (i * PAGE2M)) | (PAGEPS | PAGERW | PAGEP);
+    }
+
+    pd1[0] = ((unsigned long long)&(pt[0])) | (PAGERW | PAGEP);
 
     for(i = 0; i < 512; i++) {
         // Identity map 1GB so our bootloader keeps running 
         pd[i] = (i * PAGE2M) | (PAGEPS | PAGERW | PAGEP);
     }
     pdpt[0] = ((unsigned long long)&(pd[0])) | (PAGERW | PAGEP);
+    pdpt[2] = ((unsigned long long)&(pd2[0])) | (PAGERW | PAGEP); // 2GB mark for framebuffer
+    pdpt[3] = ((unsigned long long)&(pd1[0])) | (PAGERW | PAGEP); // 3GB mark for kernel
     pml4[0] = ((unsigned long long)&(pdpt[0])) | (PAGERW | PAGEP);
 
     // const unsigned long long entries = memmapsize / descsize;
@@ -582,15 +631,41 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     systab->bservices->exitbootservices(image, mapkey);
 
-    asm volatile ("1: jmp 1b");
+    // asm volatile ("1: jmp 1b");
 
     asm volatile("cli; movq %0, %%cr3" : : "b"(&(pml4[0])));
 
+    wstrscr("Test?\n");
+    wstrscr("Test again?\n");
+
+    // wstrscr("Entry: ");
+    // wstrscr(ptrtostr(elf->entry));
+    // wchscr('\n');
+
+    wstrscr("Wish us luck!\n");
+
+    if(!(entry)) {
+        wstrscr("Warning: No entry!\n");
+    } else {
+        wstrscr(ptrtostr((unsigned long long)(entry)));
+        wchscr('\n');
+    }
+
     asm volatile ("1: jmp 1b");
 
-    while(1) {
-        wstrcom1("We are still running!\n");
-    }
+    (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
+
+    // asm volatile ("1: jmp 1b");
+
+    clearscr();
+    wstrscr("Kernel returned!\n");
+    asm volatile("cli; hlt");
+
+    // asm volatile("hlt");
+
+    // while(1) {
+    //     wstrcom1("We are still running!\n");
+    // }
 
     //asm volatile("int $3");
     //wstrscr("We're still running!\n");
