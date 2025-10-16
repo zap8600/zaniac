@@ -3,3 +3,4 @@ bios64.bin
 serial.log
 debug.log
 firmware/*
+.vscode

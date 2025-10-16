@@ -4,290 +4,10 @@
 // Boot params
 #include "../kernel/sysparam.h"
 
+// EFI
+#include "efi.h"
+
 // https://www.youtube.com/watch?v=mHh2-ixF9Yk&t=1031s
-
-// EFI data
-typedef struct efitableheader_t {
-    unsigned long long signature;
-    unsigned int revision;
-    unsigned int headersize;
-    unsigned int crc32;
-    unsigned int reserved;
-} efitableheader_t;
-
-typedef struct efitime_t {
-    unsigned short year;
-    unsigned char month;
-    unsigned char day;
-    unsigned char hour;
-    unsigned char minute;
-    unsigned char second;
-    unsigned char pad1;
-    unsigned int nanosecond;
-    signed int timezone;
-    unsigned char daylight;
-    unsigned char pad2;
-} efitime_t;
-
-typedef struct efitimecap_t {
-    unsigned int resolution;
-    unsigned int accuracy;
-    unsigned char settozero;
-} efitimecap_t;
-
-typedef unsigned long long (*efigettime_t)(efitime_t* time, efitimecap_t* cap);
-
-typedef struct efirtservices_t {
-    efitableheader_t header;
-    efigettime_t gettime;
-} efirtservices_t;
-
-typedef struct efiguid_t {
-    unsigned int data1;
-    unsigned short data2;
-    unsigned short data3;
-    unsigned char data4[8];
-} efiguid_t;
-
-typedef enum efimemtype_t {
-    efireservedmem,
-    efiloadercode,
-    efiloaderdata,
-    efibscode,
-    efibsdata,
-    efirtscode,
-    efirtsdata,
-    eficonvetmem,
-    efiunusablemem,
-    efiacpireclaimmem,
-    efiacpimemnvs,
-    efimemmappedio,
-    efimemmappedioport,
-    efipalcode,
-    efipersistmem,
-    efiunacceptedmem,
-    efimaxmemtype
-} efimemtype_t;
-
-typedef struct efimemdesc_t {
-    unsigned int type;
-    unsigned int pad;
-    unsigned long long physicalstart;
-    unsigned long long virtualstart;
-    unsigned long long numofpages;
-    unsigned long long attr;
-} efimemdesc_t;
-
-typedef enum efialloctype_t {
-    efiallocany,
-    efimaxaddr,
-    efiaddr,
-    efimaxalloctype
-} efialloctype_t;
-
-typedef unsigned long long (*efiallocpages_t)(efialloctype_t type, efimemtype_t memtype, unsigned long long pages, void* mem);
-typedef unsigned long long (*efihandleprot_t)(void* handle, efiguid_t* prot, void** interface);
-typedef unsigned long long (*efiallocpool_t)(efimemtype_t memtype, unsigned long long size, void** ret);
-typedef unsigned long long (*efifreepool_t)(void* buf);
-typedef unsigned long long (*efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
-typedef unsigned long long (*efigetmemmap_t)(unsigned long long* memmapsize, efimemdesc_t* memmap, unsigned long long* mapkey, unsigned long long* descsize, unsigned int* descversion);
-typedef unsigned long long (*efiexitbootservices_t)(void* imghandle, unsigned long long mapkey);
-
-typedef struct efibservices_t {
-    efitableheader_t header;
-    void* raisetpl;
-    void* restoretpl;
-
-    efiallocpages_t allocatepages;
-    void* freepages;
-    efigetmemmap_t getmemorymap;
-    efiallocpool_t allocatepool;
-    efifreepool_t freepool;
-
-    void* eventnotify;
-    void* createevent;
-    void* settimer;
-    void* waitforevent;
-    void* signalevent;
-    void* closeevent;
-
-    void* installprotif;
-    void* reinstallprotif;
-    void* uninstallprotif;
-    efihandleprot_t handleprot;
-    void* pchandleprot;
-    void* registerprotnot;
-    void* lochandle;
-    void* locdevpath;
-    void* installconftable;
-
-    void* loadimage;
-    void* startimage;
-    void* exit;
-    void* unloadimage;
-    efiexitbootservices_t exitbootservices;
-
-    void*getnexthimonocnt;
-    void* stall;
-    void* setwatchdogtimer;
-
-    void* connectcont;
-    void* disconnectcont;
-
-    void* openprot;
-    void* closeprot;
-    void* openprotinfo;
-
-    void* protsperhandle;
-    void* lochanlebuf;
-    efilocprot_t locprot;
-    void* installmultipleprotif;
-    void* uninstallmultipleprotif;
-    void* caluclatecrc32;
-} efibservices_t;
-
-typedef struct efiinputkey_t {
-    unsigned short scancode;
-    unsigned short unicodech;
-} efiinputkey_t;
-
-typedef unsigned long long (*efireset_t)(void* this, unsigned char extendedverification);
-typedef unsigned long long (*efireadkeystroke_t)(void* this, efiinputkey_t* key);
-
-typedef struct efisimpletextinput_t {
-    efireset_t reset;
-    efireadkeystroke_t readkeystroke;
-    void* event;
-} efisimpletextinput_t;
-
-typedef struct efisystemtable_t {
-    efitableheader_t header;
-    unsigned short* fwvendor;
-    unsigned int fwrevision;
-    void* coninhandle;
-    efisimpletextinput_t* conin;
-    void* conouthandle;
-    void* conout;
-    void* conerrhandle;
-    void* stderr;
-    efirtservices_t* rtservices;
-    efibservices_t* bservices;
-    unsigned long long numoftableents;
-    void* conftable;
-} efisystemtable_t;
-
-#define GOPGUID {0x9042a9de, 0x23dc, 0x4a38, {0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a}}
-
-typedef enum efigoppixformat_t {
-    rgbreserved,
-    bgrreserved,
-    bitmask,
-    bltonly,
-    formatmax
-} efigoppixformat_t;
-
-typedef struct efigoppixbitmask_t {
-    unsigned int rmask;
-    unsigned int gmask;
-    unsigned int bluemask;
-    unsigned int reservedmask;
-} efigoppixbitmask_t;
-
-typedef struct efigopmodeinfo_t {
-    unsigned int version;
-    unsigned int hres;
-    unsigned int vres;
-    efigoppixformat_t pixformat;
-    efigoppixbitmask_t pixinfo;
-    unsigned int pixperscanline;
-} efigopmodeinfo_t;
-
-typedef struct efigopmode_t {
-    unsigned int maxmode;
-    unsigned int mode;
-    efigopmodeinfo_t* info;
-    unsigned long long sizeofinfo;
-    unsigned int* fbbase;
-    unsigned long long fbsize;
-} efigopmode_t;
-
-typedef unsigned long long (*efiquerymode_t)(void* this, unsigned int modenum, unsigned long long* sizeofinfo, efigopmodeinfo_t** info);
-typedef unsigned long long (*efisetmode_t)(void* this, unsigned int modenum);
-
-typedef struct efigop_t {
-    efiquerymode_t querymode;
-    efisetmode_t setmode;
-    void* blt;
-    efigopmode_t* mode;
-} efigop_t;
-
-typedef struct efidevpath_t {
-    unsigned char type;
-    unsigned char subtype;
-    unsigned char length[2];
-} efidevpath_t;
-
-#define LIPGUID {0x5B1B31A1, 0x9562, 0x11d2, {0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B}}
-
-typedef struct efiloadedimageprot_t {
-    unsigned int revision;
-    void* parenthandle;
-    void* systab;
-    void* devhanle;
-    efidevpath_t* filepath;
-    void* reserved;
-    unsigned int loadoptsize;
-    void* loadopt;
-    void* imgbase;
-    unsigned long long imgsize;
-    efimemtype_t imgcodetype;
-    efimemtype_t imgdatatype;
-} efiloadedimageprot_t;
-
-#define EFIFILEINFOGUID {0x9576e92, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}}
-
-typedef struct efifileinfo_t {
-    unsigned long long size;
-    unsigned long long filesize;
-    unsigned long long physicalsize;
-    efitime_t createtime;
-    efitime_t lastaccesstime;
-    efitime_t modificationtime;
-    unsigned long long attr;
-    unsigned short int filename[262];
-} efifileinfo_t;
-
-typedef struct efifilehandle_t efifilehandle_t;
-
-typedef unsigned long long (*efifileopen_t)(efifilehandle_t* file, efifilehandle_t** newhandle, unsigned short int* filename, unsigned long long openmode, unsigned long long attr);
-typedef unsigned long long (*efifileclose_t)(efifilehandle_t* file);
-typedef unsigned long long (*efifileread_t)(efifilehandle_t* file, unsigned long long* bufsize, void* buf);
-typedef unsigned long long (*efigetinfo_t)(efifilehandle_t* file, efiguid_t* infotype, unsigned long long* bufsize, void* buf);
-
-typedef struct efifilehandle_t {
-    unsigned long long revision;
-    efifileopen_t open;
-    efifileclose_t close;
-    void* delete;
-    efifileread_t read;
-    void* write;
-    void* getpos;
-    void* setpos;
-    efigetinfo_t getinfo;
-    void* setinfo;
-    void* flush;
-} efifilehandle_t;
-
-#define SFSGUID {0x964e5b22, 0x6459, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}}
-
-typedef unsigned long long (*efiopenvolume_t)(void* this, efifilehandle_t** root);
-
-typedef struct efisfsprot_t {
-    unsigned long long revision;
-    efiopenvolume_t openvolume;
-} efisfsprot_t;
-
-#define EFIFILEMODEREAD 0x1
 
 //Screen
 efigop_t* gop = (void*)0;
@@ -406,12 +126,12 @@ typedef struct elf64phdr_t {
 unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
 efifilehandle_t filedata = {0};
 
-unsigned long long pml4[512] __attribute__((aligned(4096))) = {0};
-unsigned long long pdpt[512] __attribute__((aligned(4096))) = {0};
-unsigned long long pd[512] __attribute__((aligned(4096))) = {0};
-unsigned long long pd1[512] __attribute__((aligned(4096))) = {0};
-unsigned long long pd2[512] __attribute__((aligned(4096))) = {0};
-unsigned long long pt[512] __attribute__((aligned(4096))) = {0};
+unsigned long long pml4[512] __attribute__((aligned(4096))) = {0}; // root
+unsigned long long pdpt[512] __attribute__((aligned(4096))) = {0}; // root
+unsigned long long pd[512] __attribute__((aligned(4096))) = {0}; // for memmap
+unsigned long long pd1[512] __attribute__((aligned(4096))) = {0}; // for kernel
+unsigned long long pd2[512] __attribute__((aligned(4096))) = {0}; // for framebuffer
+unsigned long long pt[512] __attribute__((aligned(4096))) = {0}; // for kernel
 
 #define PAGE4K (4 * 1024)
 #define PAGE2M (2 * 1024 * 1024)
@@ -424,10 +144,43 @@ unsigned long long pt[512] __attribute__((aligned(4096))) = {0};
 void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
     // TODO: Sort the memmap
     efimemdesc_t tempentry = {0};
-    unsigned long long smallindex = 0;
-    for(unsigned long long i = 0, j = amt - 1; i < amt; i++, j--) {
-        //
+    unsigned long long smallindex = amt - 1;
+    unsigned long long stopper = 0;
+    while(stopper < amt) {
+        for(unsigned long long i = 0, j = amt - 1; (i < amt) && (j >= stopper); i++, j--) {
+            if(memmap[j].physicalstart < memmap[smallindex].physicalstart) {
+                smallindex = j;
+            }
+        }
+        
+        if(stopper != (amt - 1)) {
+            // Swaps entries
+            tempentry = memmap[smallindex];
+            memmap[smallindex] = memmap[stopper];
+            memmap[stopper] = tempentry;
+        }
+        stopper++;
+        smallindex = amt - 1;
     }
+}
+
+efimemdesc_t* getmemmap(efisystemtable_t* systab, unsigned long long* memmapsize, unsigned long long* mapkey, unsigned long long* descsize, unsigned int* descversion) {
+    // get initial memmap size
+    efimemdesc_t* memmap = (void*)0;
+    *memmapsize = 0;
+    *mapkey = 0;
+    *descsize = 0;
+    *descversion = 0;
+    systab->bservices->getmemorymap(memmapsize, memmap, mapkey, descsize, descversion);
+
+    // Allocate memory for the memory map
+    // Add space for an extra 2 entries
+    // Allocating memory is gonna add a new desc
+    *memmapsize += *descsize * 2;
+    systab->bservices->allocatepool(efiloaderdata, *memmapsize, (void**)&memmap);
+    systab->bservices->getmemorymap(memmapsize, memmap, mapkey, descsize, descversion);
+
+    return memmap;
 }
 
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
@@ -521,8 +274,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         //wstrscr("Section!\n");
         if(phdr->ptype == PTLOAD) {
             unsigned long long sectionpages = phdr->memsize / PAGE4K;
-            if(sectionpages % PAGE4K) sectionpages++;
-            if((!sectionpages) && (phdr->memsize)) sectionpages++;
+            if(phdr->memsize % PAGE4K) sectionpages++;
             void* sectionptr = (void*)0;
             status = systab->bservices->allocatepages(efiallocany, efiloaderdata, sectionpages, &sectionptr);
             if(EFIERROR(status)) {
@@ -539,7 +291,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
             // pt[ptmarker++] = ((unsigned long long)sectionptr) | (PAGERW | PAGEP);
             for(unsigned long long j = 0; j < sectionpages; j++) {
                 pt[ptmarker++] = ((unsigned long long)(sectionptr + (j * PAGE4K))) | (PAGERW | PAGEP);
-                wstrscr("Writing section!\n");
+                // wstrscr("Writing section!\n");
             }
         }
     }
@@ -555,10 +307,11 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     pd1[0] = ((unsigned long long)&(pt[0])) | (PAGERW | PAGEP);
 
-    for(i = 0; i < 512; i++) {
-        // Identity map 1GB so our bootloader keeps running 
-        pd[i] = (i * PAGE2M) | (PAGEPS | PAGERW | PAGEP);
-    }
+    // for(i = 0; i < 512; i++) {
+    //     // Identity map 1GB so our bootloader keeps running 
+    //     pd[i] = (i * PAGE2M) | (PAGEPS | PAGERW | PAGEP);
+    // }
+
     pdpt[0] = ((unsigned long long)&(pd[0])) | (PAGERW | PAGEP);
     pdpt[2] = ((unsigned long long)&(pd2[0])) | (PAGERW | PAGEP); // 2GB mark for framebuffer
     pdpt[3] = ((unsigned long long)&(pd1[0])) | (PAGERW | PAGEP); // 3GB mark for kernel
@@ -598,93 +351,70 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     //     }
     // }
 
-    // get initial memmap size
     efimemdesc_t* memmap = (void*)0;
     unsigned long long memmapsize = 0;
     unsigned long long mapkey = 0;
     unsigned long long descsize = 0;
     unsigned int descversion = 0;
-    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
+    memmap = getmemmap(systab, &memmapsize, &mapkey, &descsize, &descversion);
+    unsigned long long entries = memmapsize / descsize;
 
-    // Allocate memory for the memory map
-    // Add space for an extra 2 entries
-    // Allocating memory is gonna add a new desc
-    memmapsize += descsize * 2;
-    systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
-    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
+    wstrscr("Last entry page numbers: ");
+    wstrscr(ptrtostr(memmap[i].numofpages));
+    wchscr('\n');
+
+    // Make sure we have enough page tables to identity map
+    // TODO: Check to see if we need another page directory
+    unsigned long long requiredpages = 0;
+    unsigned long long pagelimit = 512;
+    unsigned long long allocpts = 0;
+    for(i = 0; i < entries; ) {
+        requiredpages += memmap[i].numofpages;
+        if(requiredpages > pagelimit) {
+            pagelimit += 512;
+            systab->bservices->freepool(memmap);
+            unsigned long long* newpt = (void*)0;
+            systab->bservices->allocatepages(efiallocany, efiloaderdata, 1, &newpt);
+            memset(newpt, 0, PAGE4K);
+            pd[++allocpts] = ((unsigned long long)newpt) | (PAGERW | PAGEP);
+            i = 0;
+            requiredpages = 0;
+            memmap = getmemmap(systab, &memmapsize, &mapkey, &descsize, &descversion);
+            entries = memmapsize / descsize;
+        } else {
+            i++;
+        }
+    }
 
     systab->bservices->exitbootservices(image, mapkey);
 
-    // asm volatile ("1: jmp 1b");
+    wstrscr("Page tables: ");
+    wstrscr(ptrtostr(allocpts));
+    wchscr('\n');
 
+    unsigned long long currentpagenum = 0;
+    for(i = 0; i < entries; i++) {
+        efimemdesc_t* currententry = &(memmap[i]);
+        for(unsigned long long j = 0; j < currententry->numofpages; j++) {
+            unsigned long long* currentpt = (unsigned long long*)(pd[currentpagenum / 512] & 0xfffffffffffff000);
+            currentpt[(currentpagenum + j) % 512] = (currententry->physicalstart + (j * PAGE4K)) | (PAGERW | PAGEP);
+        }
+        currentpagenum += currententry->numofpages;
+    }
+
+    asm volatile ("1: jmp 1b");
     asm volatile("cli; movq %0, %%cr3" : : "b"(&(pml4[0])));
+
+    gop->mode->fbbase = (unsigned int*)0x80000000ULL;
 
     if(!(entry)) {
         wstrscr("Warning: No entry!\n");
     }
 
+    wstrscr("Ready to boot!\n");
     asm volatile ("1: jmp 1b");
 
-    // asm volatile ("1: jmp 1b");
     (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
-
-    // asm volatile ("1: jmp 1b");
-
-    clearscr();
-    wstrscr("Kernel returned!\n");
-    asm volatile("cli; hlt");
-
-    // asm volatile("hlt");
-
-    // while(1) {
-    //     wstrcom1("We are still running!\n");
-    // }
-
-    //asm volatile("int $3");
-    //wstrscr("We're still running!\n");
-
-    /*
-    int i;
-    for(phdr = (elf64phdr_t*)(kerneldata + elf->phoff), i = 0; i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
-        if(phdr->ptype == PTLOAD) {
-            memcpy((void*)(phdr->vaddr), kerneldata + phdr->offset, phdr->filesize);
-            memset((void*)(phdr->paddr + phdr->filesize), 0, phdr->memsize - phdr->filesize);
-        }
-    }
-
-    void* entry = (void*)(elf->entry);
-
-    systab->bservices->freepool(kerneldata);
-
-    efimemdesc_t* memmap = (void*)0;
-    unsigned long long count = 3; // Three tries
-    unsigned long long memmapsize = 0;
-    unsigned long long mapkey = 0;
-    unsigned long long descsize = 0;
-    while(count--) {
-        status = systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, (void*)0);
-        if(status & 0x8000000000000000) {
-            if((status ^ 0x8000000000000000) != 5) {
-                break;
-            }
-        }
-        if(status != (0x8000000000000000 | (unsigned int)(5))) break;
-        status = systab->bservices->exitbootservices(image, mapkey);
-        if(!EFIERROR(status)) {
-            status = 0;
-            break;
-        }
-    }
-    if((int)(status & 0xffff)) {
-        wstrscr("They limit our potential yet again.");
-        while(1) asm volatile("hlt");
-    }
-
-    (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
-
-    while(1) asm volatile("hlt");
-
-    */
 
     return 0;
 }
