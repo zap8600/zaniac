@@ -421,27 +421,12 @@ unsigned long long pt[512] __attribute__((aligned(4096))) = {0};
 #define PAGERW 0x2 // Read/Write flag
 #define PAGEP 0x1 // Present flag
 
-inline void outb(unsigned short int port, unsigned char value) {
-    asm volatile("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
-}
-
-inline unsigned char inb(unsigned short int port) {
-    unsigned char ret;
-    asm volatile("inb %w1, %b0" : "=a"(ret) : "Nd"(port) : "memory");
-    return ret;
-}
-
-#define COM1 0x3f8
-
-inline void wchcom1(const char c) {
-    while(!(inb(COM1 + 5) & 0x20)) {}
-    outb(COM1, c);
-}
-
-inline void wstrcom1(const char* s) {
-    char c = 0;
-    while((c = *s++)) {
-        wchcom1(c);
+void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
+    // TODO: Sort the memmap
+    efimemdesc_t tempentry = {0};
+    unsigned long long smallindex = 0;
+    for(unsigned long long i = 0, j = amt - 1; i < amt; i++, j--) {
+        //
     }
 }
 
