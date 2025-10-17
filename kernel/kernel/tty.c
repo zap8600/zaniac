@@ -65,9 +65,9 @@ static void fb_write_ch(char ch) {
             const unsigned char c = VGA8_F16[(ch * 16) + cb];
             for(unsigned char shift = 0; shift < 8; shift++) {
                 if(c & (0x80 >> shift)) {
-                    framebuffer_draw_pixel(cx, cy, 0xffffffff);
+                    framebuffer_draw_pixel(cx + shift, cy + cb, 0xffffffff);
                 } else {
-                    framebuffer_draw_pixel(cx, cy, 0x00000000);
+                    framebuffer_draw_pixel(cx + shift, cy + cb, 0x00000000);
                 }
             }
         }
