@@ -1,4 +1,4 @@
-#include "string.h"
+#include <kernel/string.h>
 
 void* memset(void* s, int c, unsigned long long n) {
     unsigned char* b = (unsigned char*)s;

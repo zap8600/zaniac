@@ -1,8 +1,8 @@
 // Font
-#include "../font/VGA8.h"
+#include "../kernel/include/kernel/font/VGA8.h"
 
 // Boot params
-// #include "../kernel/sysparam.h"
+#include "../kernel/include/kernel/sysparam.h"
 
 // EFI
 #include "efi.h"
@@ -240,11 +240,12 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     kernelfile->read(kernelfile, &(kernelfileinfo.filesize), kerneldata);
     kernelfile->close(kernelfile);
 
-    // sysparam_t bootparams = {0};
-    // bootparams.framebufferinfo.hres = gop->mode->info->hres;
-    // bootparams.framebufferinfo.vres = gop->mode->info->vres;
-    // bootparams.framebufferinfo.pitch = gop->mode->info->pixperscanline;
-    // bootparams.framebufferinfo.size = gop->mode->fbsize;
+    sysparam_t bootparams = {0};
+    bootparams.framebufferinfo.present = 1;
+    bootparams.framebufferinfo.hres = gop->mode->info->hres;
+    bootparams.framebufferinfo.vres = gop->mode->info->vres;
+    bootparams.framebufferinfo.pitch = gop->mode->info->pixperscanline;
+    bootparams.framebufferinfo.size = gop->mode->fbsize;
 
     if((((unsigned long long)(gop->mode->fbbase)) % PAGE2M)) {
         wstrscr("Warning: Framebuffer pointer is not aligned on a 2MB boundary!\n");
@@ -309,14 +310,11 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long memmapsize = 0;
     unsigned long long mapkey = 0;
     unsigned long long descsize = 0;
-    unsigned long long descversion = 0;
-    unsigned long long ogsize = 0;
+    unsigned int descversion = 0;
     systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
     // Allocate memory for the memory map
     // Add space for an extra 2 entries
-    memmapsize += descsize * 2;
-    ogsize = memmapsize;
     systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
     systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
@@ -330,7 +328,9 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         wstrscr("Warning: No entry!\n");
     }
 
-    // (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
+    wstrscr("Ready!\n");
+    asm volatile("1: jmp 1b");
+    (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
 
     return 0;
 }

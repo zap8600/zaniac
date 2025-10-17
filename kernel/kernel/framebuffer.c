@@ -1,6 +1,6 @@
 // Simple framebuffer driver
 
-#include "../include/kernel/framebuffer.h"
+#include <kernel/framebuffer.h>
 
 // The bootloader should map our framebuffer to the 2GB mark
 static void* framebuffer = (void*)0x80000000ULL;
@@ -20,7 +20,7 @@ framebufferinfo_t* framebuffer_get_info() {
     return &framebufferinfo;
 }
 
-void framebuffer_plot_pixel(unsigned int x, unsigned int y, unsigned int color) {
+void framebuffer_draw_pixel(unsigned int x, unsigned int y, unsigned int color) {
     // Reverse the order of color so it gets written properly on little-endian architectures
     color = (color & 0xff) << 24 | (color & 0xff00) << 8 | (color & 0xff0000) >> 8 | (color & 0xff000000) >> 24;
     // TODO: Get type of framebuffer

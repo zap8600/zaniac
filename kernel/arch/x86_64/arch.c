@@ -2,7 +2,7 @@ __attribute__((naked))
 void start() {
     asm volatile(
         "movabs $stacktop, %rsp\n"
-        "call archinit\n"
+        "call kernel_main\n"
         "cli\n"
         "1:\n"
         "hlt\n"
@@ -17,6 +17,6 @@ void start() {
     );
 }
 
-void archinit() {
+void arch_init() {
     // TODO: Set up stuff for architecture
 }

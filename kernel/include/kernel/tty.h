@@ -1,6 +1,13 @@
-#ifndef _KERNELTTY_H
-#define _KERNELTTY_H
+#ifndef KERNEL_TTY_H
+#define KERNEL_TTY_H 1
 
-// TODO: Terminal stuff
+// Initialize the console
+void tty_init();
+
+// Write a character to the console
+void tty_write_ch(char ch);
+
+// Write a string to the console
+void tty_write_str(const char* str);
 
 #endif

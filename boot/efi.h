@@ -1,5 +1,5 @@
 #ifndef EFI_H
-#define EFI_H
+#define EFI_H 1
 
 // EFI data
 typedef struct efitableheader_t {

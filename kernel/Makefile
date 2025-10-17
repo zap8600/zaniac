@@ -1,5 +1,6 @@
 ARCH?=x86_64
-HOST:=$(ARCH)-elf # TODO: Have some way of doing more than just ELF targets
+HOST:=$(ARCH)-elf
+# TODO: Have some way of doing more than just ELF targets
 
 CFLAGS?=-g
 CPPFLAGS?=
@@ -11,36 +12,31 @@ LIBS?=
 CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
 CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -Iinclude
 LDFLAGS:=$(LDFLAGS)
-LIBS:=$(LIBS) -nostdlib -lk
+LIBS:=$(LIBS) -nostdlib
 
-ARCHDIR=arch/$(HOST)
+ARCHDIR=arch/$(ARCH)
 
 include $(ARCHDIR)/make.config
 
-CFLAGS:=$(CFLAGS) $(KERNELARCHCFLAGS)
-CPPFLAGS:=$(CPPFLAGS) $(KERNELARCHCPPFLAGS)
-LDFLAGS:=$(LDFLAGS) $(KERNELARCHLDFLAGS)
-LIBS:=$(LIBS) $(KERNELARCHLIBS)
+CFLAGS:=$(CFLAGS) $(KERNEL_ARCH_CFLAGS)
+CPPFLAGS:=$(CPPFLAGS) $(KERNEL_ARCHCPP_FLAGS)
+LDFLAGS:=$(LDFLAGS) $(KERNEL_ARCH_LDFLAGS)
+LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
 
 KERNEL_OBJS=\
 $(KERNEL_ARCH_OBJS) \
 kernel/kernel.o \
+kernel/framebuffer.o \
+kernel/tty.o \
+kernel/string.o \
 
 OBJS=\
-$(ARCHDIR)/crti.o \
-$(ARCHDIR)/crtbegin.o \
 $(KERNEL_OBJS) \
-$(ARCHDIR)/crtend.o \
-$(ARCHDIR)/crtn.o \
 
 LINK_LIST=\
 $(LDFLAGS) \
-$(ARCHDIR)/crti.o \
-$(ARCHDIR)/crtbegin.o \
 $(KERNEL_OBJS) \
 $(LIBS) \
-$(ARCHDIR)/crtend.o \
-$(ARCHDIR)/crtn.o \
 
 .PHONY: all clean
 .SUFFIXES: .o .c .s
@@ -49,9 +45,11 @@ all: zaniac.elf
 
 zaniac.elf: $(OBJS) $(ARCHDIR)/linker.ld
 	ld.lld -T $(ARCHDIR)/linker.ld -o $@ $(LINK_LIST)
+	llvm-objcopy --only-keep-debug zaniac.elf zaniac.sym
+	llvm-objcopy --strip-debug zaniac.elf
 
-$(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
-	OBJ=`clang -target $(HOST) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
+# $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
+#	OBJ=`clang -target $(HOST) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
 
 .c.o:
 	clang -target $(HOST) -c $< -o $@ $(CFLAGS) $(CPPFLAGS)

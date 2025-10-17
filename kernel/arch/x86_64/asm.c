@@ -1,4 +1,4 @@
-#include "asm.h"
+#include <kernel/arch/x86_64/asm.h>
 
 // Inline ASM guide
 // a: ax register
