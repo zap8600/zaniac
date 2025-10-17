@@ -1,11 +1,10 @@
 #ifndef SYSPARAM_H
 #define SYSPARAM_H
 
+#include "framebuffer.h"
+
 typedef struct sysparam_t {
-    unsigned int hres;
-    unsigned int vres;
-    unsigned int pitch;
-    unsigned long long size;
+    framebufferinfo_t framebufferinfo;
 } sysparam_t;
 
 #endif

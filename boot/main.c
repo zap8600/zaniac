@@ -164,6 +164,30 @@ void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
     }
 }
 
+void outb(unsigned short int port, unsigned char value) {
+    asm volatile("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
+}
+
+unsigned char inb(unsigned short int port) {
+    unsigned char ret;
+    asm volatile("inb %w1, %b0" : "=a"(ret) : "Nd"(port) : "memory");
+    return ret;
+}
+
+#define COM1 0x3f8
+
+void wchcom1(const char c) {
+    while(!(inb(COM1 + 5) & 0x20)) {}
+    outb(COM1, c);
+}
+
+void wstrcom1(const char* s) {
+    char c = 0;
+    while((c = *s++)) {
+        wchcom1(c);
+    }
+}
+
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     // Set up SSE
     __asm__ __volatile__ (
@@ -183,7 +207,8 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     if(!EFIERROR(status) && gop) {
         gop->setmode(gop, 0);
     } else {
-        return 0;
+        wstrcom1("Error: Could not initialize GOP, halting!\n");
+        asm volatile("cli; hlt");
     }
 
     efiloadedimageprot_t* lip = (void*)0;
@@ -216,16 +241,14 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     kernelfile->close(kernelfile);
 
     sysparam_t bootparams = {0};
-    bootparams.hres = gop->mode->info->hres;
-    bootparams.vres = gop->mode->info->vres;
-    bootparams.pitch = gop->mode->info->pixperscanline;
-    bootparams.size = gop->mode->fbsize;
+    bootparams.framebufferinfo.hres = gop->mode->info->hres;
+    bootparams.framebufferinfo.vres = gop->mode->info->vres;
+    bootparams.framebufferinfo.pitch = gop->mode->info->pixperscanline;
+    bootparams.framebufferinfo.size = gop->mode->fbsize;
 
     if((((unsigned long long)(gop->mode->fbbase)) % PAGE2M)) {
         wstrscr("Warning: Framebuffer pointer is not aligned on a 2MB boundary!\n");
     }
-
-    // TODO: Check to see if we allocated 1 too many entries
 
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
@@ -243,11 +266,9 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long ptmarker = 0;
 
     pt[ptmarker++] = ((unsigned long long)&(pml4[0])) | (PAGERW | PAGEP);
-    // pt[ptmarker++] = ((unsigned long long)&(pt1[0])) | 0x3;
 
     unsigned long long i;
     for(i = 0, phdr = (elf64phdr_t*)(kerneldata + elf->phoff); i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
-        //wstrscr("Section!\n");
         if(phdr->ptype == PTLOAD) {
             unsigned long long sectionpages = phdr->memsize / PAGE4K;
             if(phdr->memsize % PAGE4K) sectionpages++;
@@ -256,18 +277,10 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
             if(EFIERROR(status)) {
                 wstrscr("Error when allocating pages!\n");
             }
-            // wstrscr(ptrtostr((unsigned long long)sectionptr));
-            // wchscr('\n');
-            // wstrscr(ptrtostr(phdr->memsize));
-            // wchscr('\n');
-            // wstrscr(ptrtostr(sectionpages));
-            // wchscr('\n');
             memcpy(sectionptr, kerneldata + phdr->offset, phdr->filesize);
             memset(sectionptr + phdr->filesize, 0, phdr->memsize - phdr->filesize);
-            // pt[ptmarker++] = ((unsigned long long)sectionptr) | (PAGERW | PAGEP);
             for(unsigned long long j = 0; j < sectionpages; j++) {
                 pt[ptmarker++] = ((unsigned long long)(sectionptr + (j * PAGE4K))) | (PAGERW | PAGEP);
-                // wstrscr("Writing section!\n");
             }
         }
     }
@@ -283,49 +296,15 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     pd1[0] = ((unsigned long long)&(pt[0])) | (PAGERW | PAGEP);
 
-    // for(i = 0; i < 512; i++) {
-    //     // Identity map 1GB so our bootloader keeps running 
-    //     pd[i] = (i * PAGE2M) | (PAGEPS | PAGERW | PAGEP);
-    // }
+    for(i = 0; i < 512; i++) {
+        // Identity map 1GB so our bootloader keeps running 
+        pd[i] = (i * PAGE2M) | (PAGEPS | PAGERW | PAGEP);
+    }
 
     pdpt[0] = ((unsigned long long)&(pd[0])) | (PAGERW | PAGEP);
     pdpt[2] = ((unsigned long long)&(pd2[0])) | (PAGERW | PAGEP); // 2GB mark for framebuffer
     pdpt[3] = ((unsigned long long)&(pd1[0])) | (PAGERW | PAGEP); // 3GB mark for kernel
     pml4[0] = ((unsigned long long)&(pdpt[0])) | (PAGERW | PAGEP);
-
-    // const unsigned long long entries = memmapsize / descsize;
-    // for(unsigned long long i = 0; i < entries; i++) {
-    //     efimemdesc_t* memmapentry = &(memmap[i]);
-    //     switch(memmapentry->type) {
-    //         // Not usable
-    //         case efireservedmem:
-    //         case efiloadercode:
-    //         case efiloaderdata:
-    //         case efirtscode:
-    //         case efirtsdata:
-    //         case efimaxmemtype:
-    //         case efiunusablemem:
-    //         case efiacpireclaimmem:
-    //         case efiacpimemnvs:
-    //         case efimemmappedio:
-    //         case efimemmappedioport:
-    //         case efipalcode:
-    //         case efipersistmem:
-    //         case efiunacceptedmem:
-    //         {
-    //             break;
-    //         }
-
-    //         // usable
-    //         case efibscode:
-    //         case efibsdata:
-    //         case eficonvetmem:
-    //         default:
-    //         {
-    //             break;
-    //         }
-    //     }
-    // }
 
     // get initial memmap size
     efimemdesc_t* memmap = (void*)0;
@@ -337,43 +316,14 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
     // Allocate memory for the memory map
-    // Add space for an extra 64 entries
-    memmapsize += descsize * 64;
+    // Add space for an extra 2 entries
+    memmapsize += descsize * 2;
     ogsize = memmapsize;
     systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
     systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
-    unsigned long long entries = memmapsize / descsize;
-
-    // Make sure we have enough page tables to identity map
-    // TODO: Check to see if we need another page directory
-    unsigned long long requiredpages = 0;
-    unsigned long long pagelimit = 0;
-    unsigned long long allocpts = 0;
-    for(i = 0; i < entries; i++) {
-        unsigned long long ptindex = (memmap[i].physicalstart >> 12) & 0x1ff;
-        if((ptindex + 1) > allocpts) {
-            allocpts = ptindex + 1;
-        }
-    }
-
     systab->bservices->exitbootservices(image, mapkey);
 
-    wstrscr("Page tables: ");
-    wstrscr(ptrtostr(allocpts));
-    wchscr('\n');
-
-    unsigned long long currentpagenum = 0;
-    for(i = 0; i < entries; i++) {
-        efimemdesc_t* currententry = &(memmap[i]);
-        for(unsigned long long j = 0; j < currententry->numofpages; j++) {
-            unsigned long long* currentpt = (unsigned long long*)(pd[currentpagenum / 512] & 0xfffffffffffff000);
-            currentpt[(currentpagenum + j) % 512] = (currententry->physicalstart + (j * PAGE4K)) | (PAGERW | PAGEP);
-        }
-        currentpagenum += currententry->numofpages;
-    }
-
-    asm volatile ("1: jmp 1b");
     asm volatile("cli; movq %0, %%cr3" : : "b"(&(pml4[0])));
 
     gop->mode->fbbase = (unsigned int*)0x80000000ULL;
@@ -381,9 +331,6 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     if(!(entry)) {
         wstrscr("Warning: No entry!\n");
     }
-
-    wstrscr("Ready to boot!\n");
-    asm volatile ("1: jmp 1b");
 
     (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
 

@@ -30,10 +30,10 @@ char cpuidbuf[13] = {0};
 
 void kernelmain(sysparam_t* bootparams) {
     memcpy(&params, bootparams, sizeof(sysparam_t));
-    initdisp(params.hres, params.vres, params.pitch);
+    initdisp(params.framebufferinfo.hres, params.framebufferinfo.vres, params.framebufferinfo.pitch);
     //initgdt();
     //initidt();
-    //drawcheckerboardpattern(0x0000ffff);
+    drawcheckerboardpattern(0x0000ffff);
     unsigned int a = 0;
     unsigned int b = 0;
     unsigned int c = 0;
@@ -50,9 +50,10 @@ void kernelmain(sysparam_t* bootparams) {
     //     wstrcom1(&(cpuidbuf[0]));
     //     wchcom1('\n');
     // }
-    wchcom1('\n');
-    wstrcom1(&(cpuidbuf[0]));
+    // wchcom1('\n');
+    // wstrcom1(&(cpuidbuf[0]));
     wstrscr(&(cpuidbuf[0]));
+    asm volatile("1: jmp 1b");
     return;
     //wchscr('\n');
     //asm volatile("int $3");
