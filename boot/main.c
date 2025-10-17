@@ -164,25 +164,6 @@ void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
     }
 }
 
-efimemdesc_t* getmemmap(efisystemtable_t* systab, unsigned long long* memmapsize, unsigned long long* mapkey, unsigned long long* descsize, unsigned int* descversion) {
-    // get initial memmap size
-    efimemdesc_t* memmap = (void*)0;
-    *memmapsize = 0;
-    *mapkey = 0;
-    *descsize = 0;
-    *descversion = 0;
-    systab->bservices->getmemorymap(memmapsize, memmap, mapkey, descsize, descversion);
-
-    // Allocate memory for the memory map
-    // Add space for an extra 2 entries
-    // Allocating memory is gonna add a new desc
-    *memmapsize += *descsize * 2;
-    systab->bservices->allocatepool(efiloaderdata, *memmapsize, (void**)&memmap);
-    systab->bservices->getmemorymap(memmapsize, memmap, mapkey, descsize, descversion);
-
-    return memmap;
-}
-
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     // Set up SSE
     __asm__ __volatile__ (
@@ -262,11 +243,6 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long ptmarker = 0;
 
     pt[ptmarker++] = ((unsigned long long)&(pml4[0])) | (PAGERW | PAGEP);
-    pt[ptmarker++] = ((unsigned long long)&(pdpt[0])) | (PAGERW | PAGEP);
-    pt[ptmarker++] = ((unsigned long long)&(pd[0])) | (PAGERW | PAGEP);
-    pt[ptmarker++] = ((unsigned long long)&(pd1[0])) | (PAGERW | PAGEP);
-    pt[ptmarker++] = ((unsigned long long)&(pd2[0])) | (PAGERW | PAGEP);
-    pt[ptmarker++] = ((unsigned long long)&(pt[0])) | (PAGERW | PAGEP);
     // pt[ptmarker++] = ((unsigned long long)&(pt1[0])) | 0x3;
 
     unsigned long long i;
@@ -351,38 +327,33 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     //     }
     // }
 
+    // get initial memmap size
     efimemdesc_t* memmap = (void*)0;
     unsigned long long memmapsize = 0;
     unsigned long long mapkey = 0;
     unsigned long long descsize = 0;
-    unsigned int descversion = 0;
-    memmap = getmemmap(systab, &memmapsize, &mapkey, &descsize, &descversion);
-    unsigned long long entries = memmapsize / descsize;
+    unsigned long long descversion = 0;
+    unsigned long long ogsize = 0;
+    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
-    wstrscr("Last entry page numbers: ");
-    wstrscr(ptrtostr(memmap[i].numofpages));
-    wchscr('\n');
+    // Allocate memory for the memory map
+    // Add space for an extra 64 entries
+    memmapsize += descsize * 64;
+    ogsize = memmapsize;
+    systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
+    systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
+
+    unsigned long long entries = memmapsize / descsize;
 
     // Make sure we have enough page tables to identity map
     // TODO: Check to see if we need another page directory
     unsigned long long requiredpages = 0;
-    unsigned long long pagelimit = 512;
+    unsigned long long pagelimit = 0;
     unsigned long long allocpts = 0;
-    for(i = 0; i < entries; ) {
-        requiredpages += memmap[i].numofpages;
-        if(requiredpages > pagelimit) {
-            pagelimit += 512;
-            systab->bservices->freepool(memmap);
-            unsigned long long* newpt = (void*)0;
-            systab->bservices->allocatepages(efiallocany, efiloaderdata, 1, &newpt);
-            memset(newpt, 0, PAGE4K);
-            pd[++allocpts] = ((unsigned long long)newpt) | (PAGERW | PAGEP);
-            i = 0;
-            requiredpages = 0;
-            memmap = getmemmap(systab, &memmapsize, &mapkey, &descsize, &descversion);
-            entries = memmapsize / descsize;
-        } else {
-            i++;
+    for(i = 0; i < entries; i++) {
+        unsigned long long ptindex = (memmap[i].physicalstart >> 12) & 0x1ff;
+        if((ptindex + 1) > allocpts) {
+            allocpts = ptindex + 1;
         }
     }
 
