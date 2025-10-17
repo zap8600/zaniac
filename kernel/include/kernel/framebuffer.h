@@ -1,5 +1,5 @@
-#ifndef KERNEL_FRAMEBUFFER_H
-#define KERNEL_FRAMEBUFFER_H 1
+#ifndef _KERNEL_FRAMEBUFFER_H
+#define _KERNEL_FRAMEBUFFER_H 1
 
 typedef struct framebufferinfo_t {
     unsigned char present; // Tells us if we actually have a framebuffer

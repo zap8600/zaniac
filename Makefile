@@ -1,8 +1,18 @@
+ARCH?=x86_64
+export ARCH
+SYSROOT?=$(shell pwd)/sysroot
+DESTDIR:=$(SYSROOT)
+export DESTDIR
+
 .PHONY: subdirs clean run headless headlessdebug
 
 subdirs:
+	mkdir -p $(SYSROOT)
 	make -C boot main.efi
-	make -C kernel zaniac.elf
+	make -C libc install-headers
+	make -C kernel install-headers
+	make -C libc install
+	make -C kernel install
 
 uefi.img: subdirs
 	dd if=/dev/zero of=./uefi.img bs=512 count=93750
@@ -32,3 +42,5 @@ clean:
 	rm -f uefi.img
 	make -C boot clean
 	make -C kernel clean
+	make -C libc clean
+	rm -rf sysroot

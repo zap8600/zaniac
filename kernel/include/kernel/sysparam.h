@@ -1,5 +1,5 @@
-#ifndef KERNEL_SYSPARAM_H
-#define KERNEL_SYSPARAM_H 1
+#ifndef _KERNEL_SYSPARAM_H
+#define _KERNEL_SYSPARAM_H 1
 
 #include "framebuffer.h"
 

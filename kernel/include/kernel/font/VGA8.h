@@ -1,5 +1,5 @@
-#ifndef KERNEL_FONT_VGA8_H
-#define KERNEL_FONT_VGA8_H 1
+#ifndef _KERNEL_FONT_VGA8_H
+#define _KERNEL_FONT_VGA8_H 1
 
 unsigned char VGA8_F16[] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

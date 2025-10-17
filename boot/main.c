@@ -328,8 +328,6 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         wstrscr("Warning: No entry!\n");
     }
 
-    wstrscr("Ready!\n");
-    asm volatile("1: jmp 1b");
     (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
 
     return 0;

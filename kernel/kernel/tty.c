@@ -6,7 +6,7 @@
 
 #include <kernel/font/VGA8.h>
 
-#include <kernel/string.h>
+#include <string.h>
 
 static void fb_write_ch(char ch);
 static framebufferinfo_t* framebufferinfo = (void*)0;

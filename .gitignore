@@ -1,6 +1,6 @@
 uefi.img
-bios64.bin
 serial.log
 debug.log
-firmware/*
+firmware
 .vscode
+sysroot

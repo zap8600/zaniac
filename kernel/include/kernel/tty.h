@@ -1,5 +1,5 @@
-#ifndef KERNEL_TTY_H
-#define KERNEL_TTY_H 1
+#ifndef _KERNEL_TTY_H
+#define _KERNEL_TTY_H 1
 
 // Initialize the console
 void tty_init();
