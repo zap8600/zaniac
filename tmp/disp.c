@@ -24,7 +24,8 @@ void wchscr(const char c) {
     if(c == '\n') {
         cx = 0;
         if((cy + 16) >= framebufferinfo.vres) {
-            clearscr();
+            memcpy(framebuffer, framebuffer + (16 * framebufferinfo.pitch), (framebufferinfo.vres - 16) * framebufferinfo.pitch);
+            memset(framebuffer + ((framebufferinfo.vres - 16) * framebufferinfo.pitch), 0, 16 * framebufferinfo.pitch);
             cy = 0;
         } else {
             cy += 16;
@@ -33,7 +34,8 @@ void wchscr(const char c) {
         if((framebufferinfo.hres - cx) < 8) {
             cx = 0;
             if((cy + 16) >= framebufferinfo.vres) {
-                clearscr();
+                memcpy(framebuffer, framebuffer + (16 * framebufferinfo.pitch), (framebufferinfo.vres - 16) * framebufferinfo.pitch);
+                memset(framebuffer + ((framebufferinfo.vres - 16) * framebufferinfo.pitch), 0, 16 * framebufferinfo.pitch);
                 cy = 0;
             } else {
                 cy += 16;

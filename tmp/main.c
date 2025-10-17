@@ -8,24 +8,6 @@
 
 sysparam_t params;
 
-__attribute__((naked))
-void start() {
-    asm volatile(
-        "movabs $stacktop, %rsp\n"
-        "call kernelmain\n"
-        "1:\n"
-        "hlt\n"
-        "jmp 1b\n"
-        ".section .bss\n"
-        ".align 16\n"
-        "stackbottom:\n"
-        ".skip 16384\n"
-        ".global stacktop\n"
-        "stacktop:\n"
-        ".section .text\n"
-    );
-}
-
 char cpuidbuf[13] = {0};
 
 void kernelmain(sysparam_t* bootparams) {

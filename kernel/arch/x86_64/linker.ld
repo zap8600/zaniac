@@ -1,7 +1,7 @@
 OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(start)
 SECTIONS {
-    . = 0xC0001000;
+    . = 0xC0000000;
     .text : ALIGN(4K)
     {
         *(.text)

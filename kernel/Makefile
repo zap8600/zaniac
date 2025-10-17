@@ -1,27 +1,61 @@
-LDFLAGS = -T linker.ld -nostdlib -z noexecstack
+ARCH?=x86_64
+HOST:=$(ARCH)-elf # TODO: Have some way of doing more than just ELF targets
 
-CFLAGS = -ffreestanding -Wall -Wextra -mno-red-zone -mcmodel=large -g
+CFLAGS?=-g
+CPPFLAGS?=
+LDFLAGS?=
+LIBS?=
+
+# TODO: Directory stuff
+
+CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
+CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -Iinclude
+LDFLAGS:=$(LDFLAGS)
+LIBS:=$(LIBS) -nostdlib -lk
+
+ARCHDIR=arch/$(HOST)
+
+include $(ARCHDIR)/make.config
+
+CFLAGS:=$(CFLAGS) $(KERNELARCHCFLAGS)
+CPPFLAGS:=$(CPPFLAGS) $(KERNELARCHCPPFLAGS)
+LDFLAGS:=$(LDFLAGS) $(KERNELARCHLDFLAGS)
+LIBS:=$(LIBS) $(KERNELARCHLIBS)
+
+KERNEL_OBJS=\
+$(KERNEL_ARCH_OBJS) \
+kernel/kernel.o \
 
 OBJS=\
-main.o\
-disp.o\
-string.o\
-asm.o\
-gdt.o\
-idt.o\
-pic.o\
-io.o\
+$(ARCHDIR)/crti.o \
+$(ARCHDIR)/crtbegin.o \
+$(KERNEL_OBJS) \
+$(ARCHDIR)/crtend.o \
+$(ARCHDIR)/crtn.o \
 
-.PHONY: clean
+LINK_LIST=\
+$(LDFLAGS) \
+$(ARCHDIR)/crti.o \
+$(ARCHDIR)/crtbegin.o \
+$(KERNEL_OBJS) \
+$(LIBS) \
+$(ARCHDIR)/crtend.o \
+$(ARCHDIR)/crtn.o \
+
+.PHONY: all clean
 .SUFFIXES: .o .c .s
 
-zaniac.elf: $(OBJS)
-	ld.lld $(LDFLAGS) -o $@ $(OBJS)
-	llvm-objcopy --only-keep-debug zaniac.elf zaniac.sym
-	llvm-objcopy --strip-debug zaniac.elf
+all: zaniac.elf
 
-clean:
-	rm -f *.o zaniac.elf zaniac.sym
+zaniac.elf: $(OBJS) $(ARCHDIR)/linker.ld
+	ld.lld -T $(ARCHDIR)/linker.ld -o $@ $(LINK_LIST)
+
+$(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
+	OBJ=`clang -target $(HOST) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
 
 .c.o:
-	clang -target x86_64-elf -c $< -o $@ $(CFLAGS)
+	clang -target $(HOST) -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
+
+clean:
+	rm -f zaniac.elf
+	rm -f $(OBJS) *.o */*.o */*/*.o

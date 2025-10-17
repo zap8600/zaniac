@@ -2,7 +2,7 @@
 #include "../font/VGA8.h"
 
 // Boot params
-#include "../kernel/sysparam.h"
+// #include "../kernel/sysparam.h"
 
 // EFI
 #include "efi.h"
@@ -240,11 +240,11 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     kernelfile->read(kernelfile, &(kernelfileinfo.filesize), kerneldata);
     kernelfile->close(kernelfile);
 
-    sysparam_t bootparams = {0};
-    bootparams.framebufferinfo.hres = gop->mode->info->hres;
-    bootparams.framebufferinfo.vres = gop->mode->info->vres;
-    bootparams.framebufferinfo.pitch = gop->mode->info->pixperscanline;
-    bootparams.framebufferinfo.size = gop->mode->fbsize;
+    // sysparam_t bootparams = {0};
+    // bootparams.framebufferinfo.hres = gop->mode->info->hres;
+    // bootparams.framebufferinfo.vres = gop->mode->info->vres;
+    // bootparams.framebufferinfo.pitch = gop->mode->info->pixperscanline;
+    // bootparams.framebufferinfo.size = gop->mode->fbsize;
 
     if((((unsigned long long)(gop->mode->fbbase)) % PAGE2M)) {
         wstrscr("Warning: Framebuffer pointer is not aligned on a 2MB boundary!\n");
@@ -264,8 +264,6 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     }
 
     unsigned long long ptmarker = 0;
-
-    pt[ptmarker++] = ((unsigned long long)&(pml4[0])) | (PAGERW | PAGEP);
 
     unsigned long long i;
     for(i = 0, phdr = (elf64phdr_t*)(kerneldata + elf->phoff); i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
@@ -332,7 +330,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         wstrscr("Warning: No entry!\n");
     }
 
-    (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
+    // (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);
 
     return 0;
 }
