@@ -4,6 +4,6 @@
 void pic_remap(int offset1, int offset2);
 void pic_set_mask(unsigned char irqline);
 void pic_clear_mask(unsigned char irqline);
-void pic_acknowledge();
+void pic_acknowledge(unsigned char irqline);
 
 #endif

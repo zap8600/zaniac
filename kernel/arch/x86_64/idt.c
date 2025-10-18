@@ -1,6 +1,5 @@
 #include <kernel/arch/x86_64/idt.h>
 #include <kernel/arch/x86_64/pic.h>
-#include <kernel/arch/x86_64/ps2.h>
 #include <kernel/tty.h>
 
 #include <stdint.h>
@@ -162,15 +161,27 @@ void idt_init() {
     pic_remap(32, 40);
 
     for(uint8_t i = 0; i < 16; i++) {
-        if(i == 2) continue; // Don't mask the cascade interrupt
+        if(!i) continue;
         pic_set_mask(i);
     }
 
-    // TODO: Find a better place to init PS/2
-    // pic_clear_mask(1);
-
     //
-    // idt_set_desc(33, irq1, 0x8e);
+    idt_set_desc(32, irq0, 0x8e);
+    idt_set_desc(33, irq1, 0x8e);
+    idt_set_desc(34, irq2, 0x8e);
+    idt_set_desc(35, irq3, 0x8e);
+    idt_set_desc(36, irq4, 0x8e);
+    idt_set_desc(37, irq5, 0x8e);
+    idt_set_desc(38, irq6, 0x8e);
+    idt_set_desc(39, irq7, 0x8e);
+    idt_set_desc(40, irq8, 0x8e);
+    idt_set_desc(41, irq9, 0x8e);
+    idt_set_desc(42, irq10, 0x8e);
+    idt_set_desc(43, irq11, 0x8e);
+    idt_set_desc(44, irq12, 0x8e);
+    idt_set_desc(45, irq13, 0x8e);
+    idt_set_desc(46, irq14, 0x8e);
+    idt_set_desc(47, irq15, 0x8e);
     //
 
     asm volatile("lidt %0" : : "m"(idtr));
@@ -212,6 +223,25 @@ char *exception_messages[] = {
     "Reserved\n"
 };
 
+char *irq_messages[] = {
+    "PIT\n",
+    "Keyboard\n",
+    "Cascade?\n",
+    "COM2\n",
+    "COM1\n",
+    "LPT2\n",
+    "Floppy Disk\n",
+    "LPT1\n",
+    "CMOS\n",
+    "Free\n",
+    "Free\n",
+    "Free\n",
+    "PS2 Mouse\n",
+    "FPU\n",
+    "Prime ATA\n",
+    "Secondary ATA\n"
+};
+
 void isr_handler(uint8_t interruptnum, unsigned long code) {
     tty_write_str(exception_messages[interruptnum]);
     if(interruptnum != 3) {
@@ -220,9 +250,8 @@ void isr_handler(uint8_t interruptnum, unsigned long code) {
 }
 
 void irq_handler(uint8_t interruptnum) {
-    if(interruptnum == 1) {
-        ps2_handler();
-    }
+    tty_write_str(irq_messages[interruptnum]);
+    if(!interruptnum) ;
 
-    pic_acknowledge();
+    pic_acknowledge(interruptnum);
 }

@@ -30,7 +30,6 @@ $(KERNEL_ARCH_OBJS) \
 kernel/kernel.o \
 kernel/framebuffer.o \
 kernel/tty.o \
-kernel/input.o \
 
 OBJS=\
 $(KERNEL_OBJS) \

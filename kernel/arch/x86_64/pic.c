@@ -53,8 +53,12 @@ void pic_clear_mask(unsigned char irqline) {
     }
     value = inb(port) & ~(1 << irqline);
     outb(port, value);
+    iowait();
 }
 
-void pic_acknowledge() {
+void pic_acknowledge(unsigned char irqline) {
     outb(PIC1CMD, 0x20);
+    if(irqline >= 8) {
+        outb(PIC2CMD, 0x20);
+    }
 }
