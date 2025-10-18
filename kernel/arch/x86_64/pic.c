@@ -1,12 +1,12 @@
-#include "pic.h"
-#include "asm.h"
+#include <kernel/arch/x86_64/pic.h>
+#include <kernel/arch/x86_64/asm.h>
 
 #define PIC1CMD 0x20
 #define PIC2CMD 0xA0
 #define PIC1DATA 0x21
 #define PIC2DATA 0xA1
 
-void remappic(int offset1, int offset2) {
+void pic_remap(int offset1, int offset2) {
     outb(PIC1CMD, 0x11);
     iowait();
     outb(PIC2CMD, 0x11);
@@ -29,7 +29,7 @@ void remappic(int offset1, int offset2) {
     outb(PIC2DATA, 0);
 }
 
-void setmaskpic(unsigned char irqline) {
+void pic_set_mask(unsigned char irqline) {
     unsigned short int port;
     unsigned char value;
     if(irqline < 8) {
@@ -42,7 +42,7 @@ void setmaskpic(unsigned char irqline) {
     outb(port, value);
 }
 
-void clearmaskpic(unsigned char irqline) {
+void pic_clear_mask(unsigned char irqline) {
     unsigned short int port;
     unsigned char value;
     if(irqline < 8) {
@@ -53,4 +53,8 @@ void clearmaskpic(unsigned char irqline) {
     }
     value = inb(port) & ~(1 << irqline);
     outb(port, value);
+}
+
+void pic_acknowledge() {
+    outb(PIC1CMD, 0x20);
 }

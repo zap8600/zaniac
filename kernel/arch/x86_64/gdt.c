@@ -1,32 +1,34 @@
-#include "gdt.h"
+#include <kernel/arch/x86_64/gdt.h>
+
+#include <stdint.h>
 
 typedef struct gdtentry_t {
-    unsigned short int limitlow;
-    unsigned short int baselow;
-    unsigned char basemiddle;
-    unsigned char access;
-    unsigned char granularity;
-    unsigned char basehigh;
+    uint16_t limit_low;
+    uint16_t base_low;
+    uint8_t base_middle;
+    uint8_t access;
+    uint8_t granularity;
+    uint8_t base_high;
 } __attribute__((packed)) gdtentry_t;
 
 typedef struct gdtentryhigh_t {
-    unsigned int basehighest;
-    unsigned int reserved;
+    uint32_t base_highest;
+    uint32_t reserved;
 } __attribute__((packed)) gdtentryhigh_t;
 
 typedef struct tssentry_t {
-    unsigned int reserved0;
-    unsigned long long rsp[3];
-    unsigned long long reserved1;
-    unsigned long long ist[7];
-    unsigned long long reserved2;
-    unsigned long long reserved3;
-    unsigned short int iomapbase;
+    uint32_t reserved0;
+    uint64_t rsp[3];
+    uint64_t reserved1;
+    uint64_t ist[7];
+    uint64_t reserved2;
+    uint64_t reserved3;
+    uint16_t iomap_base;
 } __attribute__((packed)) tssentry_t;
 
 typedef struct gdtptr_t {
-    unsigned short int limit;
-    unsigned long long base;
+    uint16_t limit;
+    uint64_t base;
 } __attribute__((packed)) gdtptr_t;
 
 typedef struct gdt_t {
@@ -50,25 +52,30 @@ gdt_t gdt __attribute__((used)) = {
     {0, {0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0}, 0, 0, 0}
 };
 
-void initgdt() {
+void gdt_init() {
     gdt.ptr.limit = (sizeof(gdt.entries) + sizeof(gdt.tssextra)) - 1;
-    gdt.ptr.base = (unsigned long long)(&(gdt.entries));
-    unsigned long long addr = (unsigned long long)(&(gdt.tss));
-    gdt.entries[5].limitlow = sizeof(gdt.tss);
-    gdt.entries[5].baselow = (addr & 0xffff);
-    gdt.entries[5].basemiddle = (addr >> 16) & 0xff;
-    gdt.entries[5].basehigh = (addr >> 24) & 0xff;
-    gdt.tssextra.basehighest = (addr >> 32) & 0xffffffff;
-    extern void* stacktop;
-    gdt.tss.rsp[0] = (unsigned long long)(&stacktop);
+    gdt.ptr.base = (uint64_t)(&(gdt.entries));
+    uint64_t addr = (uint64_t)(&(gdt.tss));
+    gdt.entries[5].limit_low = sizeof(gdt.tss);
+    gdt.entries[5].base_low = (addr & 0xffff);
+    gdt.entries[5].base_middle = (addr >> 16) & 0xff;
+    gdt.entries[5].base_high = (addr >> 24) & 0xff;
+    gdt.tssextra.base_highest = (addr >> 32) & 0xffffffff;
+    extern void* stack_top;
+    gdt.tss.rsp[0] = (uint64_t)(&stack_top);
     asm volatile(
         "lgdt %0\n"
-        "mov $16, %%ax\n"
+        "pushq $0x08\n"
+        "lea .set_cs(%%rip), %%rax\n"
+        "pushq %%rax\n"
+        "lretq\n"
+        ".set_cs:\n"
+        "mov $0x10, %%ax\n"
         "mov %%ax, %%ds\n"
         "mov %%ax, %%es\n"
+        "mov %%ax, %%fs\n"
+        "mov %%ax, %%gs\n"
         "mov %%ax, %%ss\n"
-        "mov $43, %%ax\n"
-        "ltr %%ax\n"
         : : "m"(gdt.ptr) : "rax", "memory"
     );
 }
