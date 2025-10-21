@@ -331,8 +331,18 @@ void int_handler(struct regs_t* r) {
                 case 1:
                 case 3:
                 {
-                    
+                    tty_write_str("LDT\n");
+                    break;
                 }
+                case 2: {
+                    tty_write_str("LDT\n");
+                    break;
+                }
+            }
+        }
+        default: {
+            while(1) {
+                asm volatile("cli; hlt");
             }
         }
     }
