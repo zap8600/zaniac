@@ -5,6 +5,26 @@
 #include <stdint.h>
 
 struct regs_t {
+    uint64_t r15;
+    uint64_t r14;
+    uint64_t r13;
+    uint64_t r12;
+    uint64_t r11;
+    uint64_t r10;
+    uint64_t r9;
+    uint64_t r8;
+
+    uint64_t rbp;
+    uint64_t rdi;
+    uint64_t rsi;
+    uint64_t rdx;
+    uint64_t rcx;
+    uint64_t rbx;
+    uint64_t rax;
+
+    uint64_t int_number;
+    uint64_t error_code;
+
     // Automatically pushed by the interrupt
     uint64_t ip;
     uint64_t cs;
@@ -13,25 +33,76 @@ struct regs_t {
     uint64_t ss;
 };
 
-void isr_handler(uint8_t interruptnum, unsigned long code) __attribute__((no_caller_saved_registers));
-void irq_handler(uint8_t interruptnum) __attribute__((no_caller_saved_registers));
+void int_handler(struct regs_t* r);
+
+__attribute__((naked))
+void int_common() {
+    asm volatile(
+        "push %rax\n"
+        "push %rbx\n"
+        "push %rcx\n"
+        "push %rdx\n"
+        "push %rsi\n"
+        "push %rsi\n"
+        "push %rbp\n"
+        "push %r8\n"
+        "push %r9\n"
+        "push %r10\n"
+        "push %r11\n"
+        "push %r12\n"
+        "push %r13\n"
+        "push %r14\n"
+        "push %r15\n"
+        "cld \n"
+        "mov %rsp, %rdi\n"
+        "call int_handler\n"
+        "push %r15\n"
+        "push %r14\n"
+        "push %r13\n"
+        "push %r12\n"
+        "push %r11\n"
+        "push %r10\n"
+        "push %r9\n"
+        "push %r8\n"
+        "push %rbp\n"
+        "push %rdi\n"
+        "push %rsi\n"
+        "push %rdx\n"
+        "push %rcx\n"
+        "push %rbx\n"
+        "push %rax\n"
+        "add $16, %rsp\n"
+        "iretq\n"
+    );
+}
 
 #define ISRNOERR(index) \
-__attribute__((interrupt)) \
-void isr ## index(struct regs_t* r) { \
-    isr_handler(index, 0); \
+__attribute__((naked)) \
+void isr ## index() { \
+    asm volatile( \
+        "pushq $0x00\n" \
+        "pushq $" #index "\n" \
+        "jmp int_common\n" \
+    ); \
 }
 
 #define ISRERR(index) \
-__attribute__((interrupt)) \
-void isr ## index(struct regs_t* r, unsigned long code) { \
-    isr_handler(index, code); \
+__attribute__((naked)) \
+void isr ## index() { \
+    asm volatile( \
+        "pushq $" #index "\n" \
+        "jmp int_common\n" \
+    ); \
 }
 
 #define IRQ(index) \
-__attribute__((interrupt)) \
-void irq ## index(struct regs_t* r) { \
-    irq_handler(index); \
+__attribute__((naked)) \
+void irq ## index() { \
+    asm volatile( \
+        "pushq $0x00\n" \
+        "pushq $" #index "\n" \
+        "jmp int_common\n" \
+    ); \
 }
 
 //
@@ -158,6 +229,7 @@ void idt_init() {
     idt_set_desc(31, isr31, 0x8e);
     //
 
+    /*
     pic_remap(32, 40);
 
     for(uint8_t i = 0; i < 16; i++) {
@@ -183,6 +255,7 @@ void idt_init() {
     idt_set_desc(46, irq14, 0x8e);
     idt_set_desc(47, irq15, 0x8e);
     //
+    */
 
     asm volatile("lidt %0" : : "m"(idtr));
     asm volatile("sti");
@@ -242,16 +315,25 @@ char *irq_messages[] = {
     "Secondary ATA\n"
 };
 
-void isr_handler(uint8_t interruptnum, unsigned long code) {
-    tty_write_str(exception_messages[interruptnum]);
-    if(interruptnum != 3) {
-        asm volatile("1: jmp 1b");
+void int_handler(struct regs_t* r) {
+    tty_write_str(exception_messages[r->int_number]);
+    switch(r->int_number) {
+        case 3: break;
+        case 13: {
+            if(r->error_code & 1) {
+                tty_write_str("External\n");
+            }
+            switch((r->error_code >> 1) & 3) {
+                case 0: {
+                    tty_write_str("GDT\n");
+                    break;
+                }
+                case 1:
+                case 3:
+                {
+                    
+                }
+            }
+        }
     }
-}
-
-void irq_handler(uint8_t interruptnum) {
-    tty_write_str(irq_messages[interruptnum]);
-    if(!interruptnum) ;
-
-    pic_acknowledge(interruptnum);
 }

@@ -26,4 +26,5 @@ void arch_init() {
     tty_write_str("Initialized the Global Descriptor Table.\n");
     idt_init();
     tty_write_str("Initialized the Interrupt Descriptor Table and enabled interrupts.\n");
+    asm volatile("int $3");
 }
