@@ -1,5 +1,6 @@
 #include <kernel/arch/x86_64/idt.h>
 #include <kernel/arch/x86_64/pic.h>
+#include <kernel/arch/x86_64/ps2.h>
 #include <kernel/tty.h>
 
 #include <stdint.h>
@@ -56,21 +57,21 @@ void int_common() {
         "cld \n"
         "mov %rsp, %rdi\n"
         "call int_handler\n"
-        "push %r15\n"
-        "push %r14\n"
-        "push %r13\n"
-        "push %r12\n"
-        "push %r11\n"
-        "push %r10\n"
-        "push %r9\n"
-        "push %r8\n"
-        "push %rbp\n"
-        "push %rdi\n"
-        "push %rsi\n"
-        "push %rdx\n"
-        "push %rcx\n"
-        "push %rbx\n"
-        "push %rax\n"
+        "pop %r15\n"
+        "pop %r14\n"
+        "pop %r13\n"
+        "pop %r12\n"
+        "pop %r11\n"
+        "pop %r10\n"
+        "pop %r9\n"
+        "pop %r8\n"
+        "pop %rbp\n"
+        "pop %rdi\n"
+        "pop %rsi\n"
+        "pop %rdx\n"
+        "pop %rcx\n"
+        "pop %rbx\n"
+        "pop %rax\n"
         "add $16, %rsp\n"
         "iretq\n"
     );
@@ -95,12 +96,12 @@ void isr ## index() { \
     ); \
 }
 
-#define IRQ(index) \
+#define IRQ(byte, index) \
 __attribute__((naked)) \
 void irq ## index() { \
     asm volatile( \
         "pushq $0x00\n" \
-        "pushq $" #index "\n" \
+        "pushq $" #byte "\n" \
         "jmp int_common\n" \
     ); \
 }
@@ -141,22 +142,22 @@ ISRNOERR(31)
 //
 
 //
-IRQ(0)
-IRQ(1)
-IRQ(2)
-IRQ(3)
-IRQ(4)
-IRQ(5)
-IRQ(6)
-IRQ(7)
-IRQ(8)
-IRQ(9)
-IRQ(10)
-IRQ(11)
-IRQ(12)
-IRQ(13)
-IRQ(14)
-IRQ(15)
+IRQ(32, 0)
+IRQ(33, 1)
+IRQ(34, 2)
+IRQ(35, 3)
+IRQ(36, 4)
+IRQ(37, 5)
+IRQ(38, 6)
+IRQ(39, 7)
+IRQ(40, 8)
+IRQ(41, 9)
+IRQ(42, 10)
+IRQ(43, 11)
+IRQ(44, 12)
+IRQ(45, 13)
+IRQ(46, 14)
+IRQ(47, 15)
 //
 
 typedef struct idtentry_t {
@@ -229,11 +230,10 @@ void idt_init() {
     idt_set_desc(31, isr31, 0x8e);
     //
 
-    /*
     pic_remap(32, 40);
 
     for(uint8_t i = 0; i < 16; i++) {
-        if(!i) continue;
+        if(i == 1) continue;
         pic_set_mask(i);
     }
 
@@ -255,7 +255,6 @@ void idt_init() {
     idt_set_desc(46, irq14, 0x8e);
     idt_set_desc(47, irq15, 0x8e);
     //
-    */
 
     asm volatile("lidt %0" : : "m"(idtr));
     asm volatile("sti");
@@ -293,10 +292,9 @@ char *exception_messages[] = {
     "Hypervisor Injection Exception\n",
     "VMM Communication Exception\n",
     "Security Exception\n",
-    "Reserved\n"
-};
+    "Reserved\n",
 
-char *irq_messages[] = {
+    // IRQ
     "PIT\n",
     "Keyboard\n",
     "Cascade?\n",
@@ -316,34 +314,16 @@ char *irq_messages[] = {
 };
 
 void int_handler(struct regs_t* r) {
-    tty_write_str(exception_messages[r->int_number]);
-    switch(r->int_number) {
-        case 3: break;
-        case 13: {
-            if(r->error_code & 1) {
-                tty_write_str("External\n");
-            }
-            switch((r->error_code >> 1) & 3) {
-                case 0: {
-                    tty_write_str("GDT\n");
-                    break;
-                }
-                case 1:
-                case 3:
-                {
-                    tty_write_str("LDT\n");
-                    break;
-                }
-                case 2: {
-                    tty_write_str("LDT\n");
-                    break;
-                }
-            }
+    if(r->int_number == 3) {
+        return;
+    } else if(r->int_number > 31) {
+        if((r->int_number - 32) == 1) {
+            ps2_handler();
         }
-        default: {
-            while(1) {
-                asm volatile("cli; hlt");
-            }
-        }
+
+        pic_acknowledge(r->int_number - 32);
+    } else {
+        tty_write_str(exception_messages[r->int_number]);
+        while(1) { asm volatile("cli; hlt"); }
     }
 }
