@@ -134,35 +134,27 @@ unsigned long long pt[512] __attribute__((aligned(4096))) = {0}; // for kernel
 #define PAGERW 0x2 // Read/Write flag
 #define PAGEP 0x1 // Present flag
 
-static void swap(efimemdesc_t* a, efimemdesc_t* b) {
-    efimemdesc_t temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
-static unsigned long long partition(efimemdesc_t* memmap, unsigned long long low, unsigned long long high) {
-    unsigned long long pivot = memmap[high].physicalstart;
-    unsigned long long i = low - 1;
-    for(unsigned long long j = low; j < high; j++) {
-        if(memmap[j].physicalstart <= pivot) {
-            i++;
-            swap(&(memmap[i]), &(memmap[j]));
-        }
-    }
-
-    swap(&(memmap[i + 1]), &(memmap[high]));
-
-    return i + 1;
-}
-
-void sortmemmap(efimemdesc_t* memmap, unsigned long long low, unsigned long long high) {
+void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
     // TODO: Sort the memmap
-    if(low < high) {
-        unsigned long long pivot_index = partition(memmap, low, high);
-        sortmemmap(memmap, low, pivot_index - 1);
-        sortmemmap(memmap, pivot_index + 1, high);
+    efimemdesc_t tempentry = {0};
+    unsigned long long smallindex = amt - 1;
+    unsigned long long stopper = 0;
+    while(stopper < amt) {
+        for(unsigned long long i = 0, j = amt - 1; (i < amt) && (j >= stopper); i++, j--) {
+            if(memmap[j].physicalstart < memmap[smallindex].physicalstart) {
+                smallindex = j;
+            }
+        }
+        
+        if(stopper != (amt - 1)) {
+            // Swaps entries
+            tempentry = memmap[smallindex];
+            memmap[smallindex] = memmap[stopper];
+            memmap[stopper] = tempentry;
+        }
+        stopper++;
+        smallindex = amt - 1;
     }
-    // Done?
 }
 
 void outb(unsigned short int port, unsigned char value) {
@@ -341,17 +333,8 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     memmarker_t* previous_marker = (void*)0;
     memmarker_t* current_marker = (void*)0;
 
-    for(i = 0; i < entries; i++) {
-        wstrcom1(ptrtostr(memmap[i].physicalstart));
-        wstrcom1(" of type ");
-        wstrcom1(ptrtostr((unsigned long long)(memmap[i].type)));
-        wstrcom1(" on index ");
-        wstrcom1(ptrtostr(i));
-        wstrcom1("!\n");
-    }
-
     // Sort the memory map in order of physical address
-    sortmemmap(memmap, 0, entries - 1);
+    sortmemmap(memmap, entries);
     // Then we start putting in our memory markers
     for(i = 0; i < entries; i++) {
         if(memmap[i].physicalstart >= PAGE1G) {
@@ -365,7 +348,6 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         }
         switch(memmap[i].type) {
             case efireservedmem:
-            case efiloadercode:
             case efiloaderdata:
             case efirtscode:
             case efirtsdata:
@@ -384,6 +366,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
             case efibscode:
             case efibsdata:
             case eficonvetmem:
+            case efiloadercode:
             default:
             {
                 unsigned long long regionsize = (i != (entries - 1))?(memmap[i + 1].physicalstart - memmap[i].physicalstart):((memmap[i].physicalstart + (memmap[i].numofpages * PAGE4K)) - memmap[i].physicalstart);
@@ -392,22 +375,18 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
                     current_marker->prev_free_addr = current_marker;
                     current_marker->size = regionsize - sizeof(memmarker_t);
                     current_marker->last = 1;
+                    previous_marker = current_marker;
+                    bootparams.memory_map = current_marker;
                     firstfound = 1;
+                    wstrcom1("New entry 1!\n");
                 } else {
-                    // If this region is right after the previous one
-                    // Add it to the previous one instead of just making a new one
-                    // It'll save the kernel some work
-                    if(((unsigned long long)previous_marker) == memmap[i - 1].physicalstart) {
-                        previous_marker->size += regionsize;
-                        continue;
-                    } else {
-                        current_marker = (memmarker_t*)(memmap[i].physicalstart);
-                        current_marker->prev_free_addr = previous_marker;
-                        current_marker->size = regionsize - sizeof(memmarker_t);
-                        current_marker->last = 1;
-                        previous_marker->next_free_addr = current_marker;
-                        previous_marker->last = 0;
-                    }
+                    current_marker = (memmarker_t*)(memmap[i].physicalstart);
+                    current_marker->prev_free_addr = previous_marker;
+                    current_marker->size = regionsize - sizeof(memmarker_t);
+                    current_marker->last = 1;
+                    previous_marker->next_free_addr = current_marker;
+                    previous_marker->last = 0;
+                    wstrcom1("New entry!\n");
                 }
                 previous_marker = current_marker;
                 break;
