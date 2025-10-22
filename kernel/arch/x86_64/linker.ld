@@ -12,6 +12,7 @@ SECTIONS {
     }
     .data : ALIGN(4K)
     {
+        virt_data_start = .;
         *(.data)
     }
     .bss : ALIGN(4K)

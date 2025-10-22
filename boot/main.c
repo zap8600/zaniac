@@ -119,13 +119,6 @@ typedef struct elf64phdr_t {
 unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
 efifilehandle_t filedata = {0};
 
-unsigned long long pml4[512] __attribute__((aligned(4096))) = {0}; // root
-unsigned long long pdpt[512] __attribute__((aligned(4096))) = {0}; // root
-unsigned long long pd[512] __attribute__((aligned(4096))) = {0}; // for memmap
-unsigned long long pd1[512] __attribute__((aligned(4096))) = {0}; // for kernel
-unsigned long long pd2[512] __attribute__((aligned(4096))) = {0}; // for framebuffer
-unsigned long long pt[512] __attribute__((aligned(4096))) = {0}; // for kernel
-
 #define PAGE4K (4 * 1024)
 #define PAGE2M (2 * 1024 * 1024)
 #define PAGE1G (1 * 1024 * 1024 * 1024)
@@ -133,6 +126,13 @@ unsigned long long pt[512] __attribute__((aligned(4096))) = {0}; // for kernel
 #define PAGEPS 0x80 // PS flag
 #define PAGERW 0x2 // Read/Write flag
 #define PAGEP 0x1 // Present flag
+
+unsigned long long pml4[512] __attribute__((aligned(PAGE4K))) = {0}; // root
+unsigned long long pdpt[512] __attribute__((aligned(PAGE4K))) = {0}; // root
+unsigned long long pd[512] __attribute__((aligned(PAGE2M))) = {0}; // for memmap
+unsigned long long pd1[512] __attribute__((aligned(PAGE4K))) = {0}; // for kernel
+unsigned long long pd2[512] __attribute__((aligned(PAGE2M))) = {0}; // for framebuffer
+unsigned long long pt[512] __attribute__((aligned(PAGE4K))) = {0}; // for kernel
 
 void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
     // TODO: Sort the memmap
@@ -311,7 +311,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     pdpt[3] = ((unsigned long long)&(pd1[0])) | (PAGERW | PAGEP); // 3GB mark for kernel
     pml4[0] = ((unsigned long long)&(pdpt[0])) | (PAGERW | PAGEP);
 
-    // get the memory map
+    // get the initial memory map size
     efimemdesc_t* memmap = (void*)0;
     unsigned long long memmapsize = 0;
     unsigned long long mapkey = 0;
@@ -328,6 +328,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long entries = memmapsize / descsize;
 
     systab->bservices->exitbootservices(image, mapkey);
+    asm volatile("movq %0, %%cr3" : : "b"(&(pml4[0])));
 
     unsigned char firstfound = 0;
     memmarker_t* previous_marker = (void*)0;
@@ -370,31 +371,26 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
             default:
             {
                 unsigned long long regionsize = (i != (entries - 1))?(memmap[i + 1].physicalstart - memmap[i].physicalstart):((memmap[i].physicalstart + (memmap[i].numofpages * PAGE4K)) - memmap[i].physicalstart);
+                if(regionsize <= sizeof(memmarker_t)) break;
                 if(!firstfound) {
                     current_marker = (memmarker_t*)(memmap[i].physicalstart);
                     current_marker->prev_free_addr = current_marker;
                     current_marker->size = regionsize - sizeof(memmarker_t);
-                    current_marker->last = 1;
-                    previous_marker = current_marker;
+                    current_marker->last = 0;
                     bootparams.memory_map = current_marker;
                     firstfound = 1;
-                    wstrcom1("New entry 1!\n");
                 } else {
                     current_marker = (memmarker_t*)(memmap[i].physicalstart);
                     current_marker->prev_free_addr = previous_marker;
                     current_marker->size = regionsize - sizeof(memmarker_t);
                     current_marker->last = 1;
                     previous_marker->next_free_addr = current_marker;
-                    previous_marker->last = 0;
-                    wstrcom1("New entry!\n");
                 }
                 previous_marker = current_marker;
                 break;
             }
         }
     }
-
-    asm volatile("cli; movq %0, %%cr3" : : "b"(&(pml4[0])));
 
     gop->mode->fbbase = (unsigned int*)0x80000000ULL;
 

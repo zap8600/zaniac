@@ -6,7 +6,11 @@ typedef struct framebufferinfo_t {
     unsigned int hres; // The horizontal resolution of the framebuffer
     unsigned int vres; // The vertical resolution of the framebuffer
     unsigned int pitch; // The pixels per scanline in the framebuffer
+#ifndef _WIN32
     unsigned long int size; // The size of the framebuffer
+#else
+    unsigned long long size; // The size of the framebuffer
+#endif
 } framebufferinfo_t;
 
 // Initialize the framebuffer

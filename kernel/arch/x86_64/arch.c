@@ -21,7 +21,7 @@ void start() {
     );
 }
 
-void arch_init() {
+void arch_init(sysparam_t* params) {
     gdt_init();
     tty_write_str("Initialized the Global Descriptor Table.\n");
     idt_init();
