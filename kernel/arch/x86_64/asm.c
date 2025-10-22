@@ -38,3 +38,9 @@ unsigned char inb(unsigned short int port) {
 void iowait() {
     outb(0x80, 0);
 }
+
+unsigned long long getcr3() {
+    unsigned long long ret;
+    asm volatile("movq %%cr3, %0" : "=a"(ret) : : "memory");
+    return ret;
+}

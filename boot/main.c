@@ -1,7 +1,7 @@
 // Font
 #include "../kernel/include/kernel/font/VGA8.h"
 
-// Boot params
+// Boot params and memory information
 #include "../kernel/include/kernel/sysparam.h"
 
 // EFI
@@ -52,13 +52,6 @@ void wchscr(const char c) {
             }
         }
         cx += 8;
-    }
-}
-
-void wstrscr(const char* s) {
-    char c = 0;
-    while((c = *s++)) {
-        wchscr(c);
     }
 }
 
@@ -141,27 +134,35 @@ unsigned long long pt[512] __attribute__((aligned(4096))) = {0}; // for kernel
 #define PAGERW 0x2 // Read/Write flag
 #define PAGEP 0x1 // Present flag
 
-void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
-    // TODO: Sort the memmap
-    efimemdesc_t tempentry = {0};
-    unsigned long long smallindex = amt - 1;
-    unsigned long long stopper = 0;
-    while(stopper < amt) {
-        for(unsigned long long i = 0, j = amt - 1; (i < amt) && (j >= stopper); i++, j--) {
-            if(memmap[j].physicalstart < memmap[smallindex].physicalstart) {
-                smallindex = j;
-            }
+static void swap(efimemdesc_t* a, efimemdesc_t* b) {
+    efimemdesc_t temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+static unsigned long long partition(efimemdesc_t* memmap, unsigned long long low, unsigned long long high) {
+    unsigned long long pivot = memmap[high].physicalstart;
+    unsigned long long i = low - 1;
+    for(unsigned long long j = low; j < high; j++) {
+        if(memmap[j].physicalstart <= pivot) {
+            i++;
+            swap(&(memmap[i]), &(memmap[j]));
         }
-        
-        if(stopper != (amt - 1)) {
-            // Swaps entries
-            tempentry = memmap[smallindex];
-            memmap[smallindex] = memmap[stopper];
-            memmap[stopper] = tempentry;
-        }
-        stopper++;
-        smallindex = amt - 1;
     }
+
+    swap(&(memmap[i + 1]), &(memmap[high]));
+
+    return i + 1;
+}
+
+void sortmemmap(efimemdesc_t* memmap, unsigned long long low, unsigned long long high) {
+    // TODO: Sort the memmap
+    if(low < high) {
+        unsigned long long pivot_index = partition(memmap, low, high);
+        sortmemmap(memmap, low, pivot_index - 1);
+        sortmemmap(memmap, pivot_index + 1, high);
+    }
+    // Done?
 }
 
 void outb(unsigned short int port, unsigned char value) {
@@ -176,9 +177,18 @@ unsigned char inb(unsigned short int port) {
 
 #define COM1 0x3f8
 
-void wchcom1(const char c) {
+void wchcom1(char c) {
     while(!(inb(COM1 + 5) & 0x20)) {}
     outb(COM1, c);
+}
+
+void (*write_ch)(char ch) = (void*)0;
+
+void wstr(const char* s) {
+    char c = 0;
+    while((c = *s++)) {
+        write_ch(c);
+    }
 }
 
 void wstrcom1(const char* s) {
@@ -201,13 +211,19 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     unsigned long long status = 0;
 
+    sysparam_t bootparams = {0};
+
     // Setup
     efiguid_t gopguid = GOPGUID;
     status = systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
     if(!EFIERROR(status) && gop) {
         gop->setmode(gop, 0);
+        write_ch = wchscr;
+        bootparams.framebufferinfo.present = 1;
     } else {
-        wstrcom1("Error: Could not initialize GOP, halting!\n");
+        write_ch = wchcom1;
+        bootparams.framebufferinfo.present = 0;
+        wstr("Warning: GOP could not be initialized!\n");
         asm volatile("cli; hlt");
     }
 
@@ -223,8 +239,8 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         sfs->openvolume(sfs, &rootdir);
     }
     if(!rootdir) {
-        wstrscr("Failed to open file.");
-        while(1) asm volatile("hlt");
+        wstr("Error: Failed to open zaniac.elf!\n");
+        while(1) asm volatile("cli; hlt");
     }
 
     efifilehandle_t* kernelfile = &filedata;
@@ -240,28 +256,26 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     kernelfile->read(kernelfile, &(kernelfileinfo.filesize), kerneldata);
     kernelfile->close(kernelfile);
 
-    sysparam_t bootparams = {0};
-    bootparams.framebufferinfo.present = 1;
     bootparams.framebufferinfo.hres = gop->mode->info->hres;
     bootparams.framebufferinfo.vres = gop->mode->info->vres;
     bootparams.framebufferinfo.pitch = gop->mode->info->pixperscanline;
     bootparams.framebufferinfo.size = gop->mode->fbsize;
 
     if((((unsigned long long)(gop->mode->fbbase)) % PAGE2M)) {
-        wstrscr("Warning: Framebuffer pointer is not aligned on a 2MB boundary!\n");
+        wstr("Warning: Framebuffer pointer is not aligned on a 2MB boundary!\n");
     }
 
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
     elf64phdr_t *phdr = (void*)0;
 
     if(!(elf->entry)) {
-        wstrscr("Warning: No entry!\n");
+        wstr("Warning: No entry!\n");
     }
 
     void* entry = (void*)(elf->entry);
 
     if(!(entry)) {
-        wstrscr("Warning: No entry!\n");
+        wstr("Warning: No entry!\n");
     }
 
     unsigned long long ptmarker = 0;
@@ -274,7 +288,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
             void* sectionptr = (void*)0;
             status = systab->bservices->allocatepages(efiallocany, efiloaderdata, sectionpages, &sectionptr);
             if(EFIERROR(status)) {
-                wstrscr("Error when allocating pages!\n");
+                wstr("Error when allocating pages!\n");
             }
             memcpy(sectionptr, kerneldata + phdr->offset, phdr->filesize);
             memset(sectionptr + phdr->filesize, 0, phdr->memsize - phdr->filesize);
@@ -287,7 +301,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long fbpages = (gop->mode->fbsize) / PAGE2M;
     if((gop->mode->fbsize) % PAGE2M) fbpages++;
     if(fbpages > 512) {
-        wstrscr("Warning: Framebuffer pages are larger than a single page directory!\n");
+        wstr("Warning: Framebuffer pages are larger than a single page directory!\n");
     }
     for(i = 0; i < fbpages; i++) {
         pd2[i] = (((unsigned long long)(gop->mode->fbbase)) + (i * PAGE2M)) | (PAGEPS | PAGERW | PAGEP);
@@ -300,12 +314,12 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         pd[i] = (i * PAGE2M) | (PAGEPS | PAGERW | PAGEP);
     }
 
-    pdpt[0] = ((unsigned long long)&(pd[0])) | (PAGERW | PAGEP);
+    pdpt[0] = ((unsigned long long)&(pd[0])) | (PAGERW | PAGEP); // 0GB - 1GB mark for bootloader identity map
     pdpt[2] = ((unsigned long long)&(pd2[0])) | (PAGERW | PAGEP); // 2GB mark for framebuffer
     pdpt[3] = ((unsigned long long)&(pd1[0])) | (PAGERW | PAGEP); // 3GB mark for kernel
     pml4[0] = ((unsigned long long)&(pdpt[0])) | (PAGERW | PAGEP);
 
-    // get initial memmap size
+    // get the memory map
     efimemdesc_t* memmap = (void*)0;
     unsigned long long memmapsize = 0;
     unsigned long long mapkey = 0;
@@ -315,17 +329,98 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     // Allocate memory for the memory map
     // Add space for an extra 2 entries
+    memmapsize += descsize * 2;
     systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
     systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
+    unsigned long long entries = memmapsize / descsize;
+
     systab->bservices->exitbootservices(image, mapkey);
+
+    unsigned char firstfound = 0;
+    memmarker_t* previous_marker = (void*)0;
+    memmarker_t* current_marker = (void*)0;
+
+    for(i = 0; i < entries; i++) {
+        wstrcom1(ptrtostr(memmap[i].physicalstart));
+        wstrcom1(" of type ");
+        wstrcom1(ptrtostr((unsigned long long)(memmap[i].type)));
+        wstrcom1(" on index ");
+        wstrcom1(ptrtostr(i));
+        wstrcom1("!\n");
+    }
+
+    // Sort the memory map in order of physical address
+    sortmemmap(memmap, 0, entries - 1);
+    // Then we start putting in our memory markers
+    for(i = 0; i < entries; i++) {
+        if(memmap[i].physicalstart >= PAGE1G) {
+            wstrcom1("Warning: Exceeded page boundary with address ");
+            wstrcom1(ptrtostr(memmap[i].physicalstart));
+            wstrcom1(" of type ");
+            wstrcom1(ptrtostr((unsigned long long)(memmap[i].type)));
+            wstrcom1(" on index ");
+            wstrcom1(ptrtostr(i));
+            wstrcom1("!\n");
+        }
+        switch(memmap[i].type) {
+            case efireservedmem:
+            case efiloadercode:
+            case efiloaderdata:
+            case efirtscode:
+            case efirtsdata:
+            case efiunusablemem:
+            case efiacpireclaimmem:
+            case efiacpimemnvs:
+            case efimemmappedio:
+            case efimemmappedioport:
+            case efipalcode:
+            case efipersistmem:
+            case efiunacceptedmem:
+            {
+                break;
+            }
+
+            case efibscode:
+            case efibsdata:
+            case eficonvetmem:
+            default:
+            {
+                unsigned long long regionsize = (i != (entries - 1))?(memmap[i + 1].physicalstart - memmap[i].physicalstart):((memmap[i].physicalstart + (memmap[i].numofpages * PAGE4K)) - memmap[i].physicalstart);
+                if(!firstfound) {
+                    current_marker = (memmarker_t*)(memmap[i].physicalstart);
+                    current_marker->prev_free_addr = current_marker;
+                    current_marker->size = regionsize - sizeof(memmarker_t);
+                    current_marker->last = 1;
+                    firstfound = 1;
+                } else {
+                    // If this region is right after the previous one
+                    // Add it to the previous one instead of just making a new one
+                    // It'll save the kernel some work
+                    if(((unsigned long long)previous_marker) == memmap[i - 1].physicalstart) {
+                        previous_marker->size += regionsize;
+                        continue;
+                    } else {
+                        current_marker = (memmarker_t*)(memmap[i].physicalstart);
+                        current_marker->prev_free_addr = previous_marker;
+                        current_marker->size = regionsize - sizeof(memmarker_t);
+                        current_marker->last = 1;
+                        previous_marker->next_free_addr = current_marker;
+                        previous_marker->last = 0;
+                    }
+                }
+                previous_marker = current_marker;
+                break;
+            }
+        }
+    }
 
     asm volatile("cli; movq %0, %%cr3" : : "b"(&(pml4[0])));
 
     gop->mode->fbbase = (unsigned int*)0x80000000ULL;
 
     if(!(entry)) {
-        wstrscr("Warning: No entry!\n");
+        wstr("Warning: No entry!\n");
     }
 
     (*((void(* __attribute__((sysv_abi)))(sysparam_t*))(entry)))(&bootparams);

@@ -9,13 +9,14 @@
 #include <string.h>
 
 static void fb_write_ch(char ch);
-static framebufferinfo_t* framebufferinfo = (void*)0;
+static framebufferinfo_t* framebufferinfo = NULL;
 
-void (*write_ch)(char ch) = (void*)0;
+void (*write_ch)(char ch) = NULL;
 
-void tty_init() {
-    framebufferinfo = framebuffer_get_info();
+void tty_early_init(sysparam_t* params) {
+    framebufferinfo = &(params->framebufferinfo);
     if(framebufferinfo->present) {
+        framebuffer_init(framebufferinfo);
         write_ch = fb_write_ch;
         framebuffer_clear();
     } else {
@@ -38,17 +39,22 @@ void tty_write_str(const char* str) {
 static unsigned int cy = 0;
 static unsigned int cx = 0;
 
+// The scrolling is broken right now
+/*
 static void fb_scroll() {
     unsigned int* framebuffer = framebuffer_get_address();
     memcpy(framebuffer, framebuffer + (16 * framebufferinfo->pitch), (framebufferinfo->vres - 16) * framebufferinfo->pitch);
     memset(framebuffer + ((framebufferinfo->vres - 16) * framebufferinfo->pitch), 0, 16 * framebufferinfo->pitch);
 }
+*/
 
 static void fb_write_ch(char ch) {
     if(ch == '\n') {
         cx = 0;
         if((cy + 16) >= framebufferinfo->vres) {
-            fb_scroll();
+            // fb_scroll();
+            framebuffer_clear();
+            cy = 0;
         } else {
             cy += 16;
         }
@@ -56,7 +62,9 @@ static void fb_write_ch(char ch) {
         if((framebufferinfo->hres - cx) < 8) {
             cx = 0;
             if((cy + 16) >= framebufferinfo->vres) {
-                fb_scroll();
+                // fb_scroll();
+                framebuffer_clear();
+                cy = 0;
             } else {
                 cy += 16;
             }

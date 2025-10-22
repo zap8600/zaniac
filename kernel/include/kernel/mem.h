@@ -1,10 +1,13 @@
 #ifndef _KERNEL_MEM_H
 #define _KERNEL_MEM_H 1
 
-typedef struct freemarker_t {
-    unsigned long int prev_free_addr;
-    unsigned long int next_free_addr;
+// This free marker should work across different word lengths
+
+typedef struct memmarker_t {
+    void* prev_free_addr;
+    void* next_free_addr;
     unsigned long int size;
-} freemarker_t;
+    unsigned char last;
+} memmarker_t;
 
 #endif

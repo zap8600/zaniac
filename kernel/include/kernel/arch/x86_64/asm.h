@@ -7,5 +7,6 @@ unsigned long long readmsr(unsigned int id);
 void outb(unsigned short int port, unsigned char value);
 unsigned char inb(unsigned short int port);
 void iowait();
+unsigned long long getcr3();
 
 #endif

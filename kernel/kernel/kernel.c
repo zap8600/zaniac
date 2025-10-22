@@ -4,7 +4,7 @@
 
 void kernel_main(sysparam_t* params) {
     framebuffer_init(&(params->framebufferinfo));
-    tty_init();
+    tty_early_init(params);
     arch_init();
     tty_write_str("Hello, world!\n");
     while(1) { asm volatile("hlt"); } // Wait for an interrupt
