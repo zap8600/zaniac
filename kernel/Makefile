@@ -53,7 +53,7 @@ zaniac.elf: $(OBJS) $(ARCHDIR)/linker.ld
 #	OBJ=`clang -target $(HOST) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
 
 .c.o:
-	clang -isystem= -target $(HOST) -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
+	clang -target $(HOST) -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
 
 clean:
 	rm -f zaniac.elf

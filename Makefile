@@ -4,43 +4,13 @@ SYSROOT?=$(shell pwd)/sysroot
 DESTDIR:=$(SYSROOT)
 export DESTDIR
 
-.PHONY: subdirs clean run headless headlessdebug
-
-subdirs:
+sysroot:
 	mkdir -p $(SYSROOT)
-	make -C boot main.efi
-	make -C libc install-headers
-	make -C kernel install-headers
-	make -C libc install
+
+ufi: sysroot
+	make -C boot/$(ARCH)/efi install-headers
+	make -C boot/$(ARCH)/efi install
+
+kernel: sysroot
+    make -C kernel install-headers
 	make -C kernel install
-
-uefi.img: subdirs
-	dd if=/dev/zero of=./uefi.img bs=512 count=93750
-	parted ./uefi.img -s -a minimal mklabel gpt
-	parted ./uefi.img -s -a minimal mkpart EFI FAT16 2048s 93716s
-	parted ./uefi.img -s -a minimal toggle 1 boot
-	dd if=/dev/zero of=./part.img bs=512 count=91669
-	mformat -i ./part.img -h 32 -t 32 -n 64 -c 1
-	mcopy -i ./part.img ./boot/main.efi ::
-	mcopy -i ./part.img ./kernel/zaniac.elf ::
-	dd if=./part.img of=./uefi.img bs=512 count=91669 seek=2048 conv=notrunc
-	rm ./part.img
-
-run: uefi.img
-	qemu-system-x86_64 -cpu qemu64 -drive file=uefi.img,if=ide -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log
-
-headless: uefi.img
-	qemu-system-x86_64 -cpu qemu64 -drive file=uefi.img,if=ide -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log -vnc :1
-
-debug: uefi.img
-	qemu-system-x86_64 -cpu qemu64 -s -S uefi.img -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log
-
-headlessdebug: uefi.img
-	qemu-system-x86_64 -cpu qemu64 -s -S uefi.img -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log -vnc :1
-
-clean:
-	rm -f uefi.img
-	make -C boot clean
-	make -C kernel clean
-	make -C libc clean
-	rm -rf sysroot
