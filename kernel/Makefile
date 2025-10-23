@@ -57,6 +57,7 @@ zaniac.elf: $(OBJS) $(ARCHDIR)/linker.ld
 
 clean:
 	rm -f zaniac.elf
+	rm -f zaniac.sym
 	rm -f $(OBJS) *.o */*.o */*/*.o
 
 install: install-headers install-kernel
