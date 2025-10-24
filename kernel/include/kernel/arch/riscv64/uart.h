@@ -1,0 +1,4 @@
+#ifndef _KERNEL_ARCH_RISCV64_UART_H
+#define _KERNEL_ARCH_RISCV64_UART_H 1
+
+#endif

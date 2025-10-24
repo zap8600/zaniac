@@ -1,4 +1,4 @@
-OUTPUT_FORMAT(elf64-x86-64)
+OUTPUT_FORMAT(elf64-littleriscv)
 ENTRY(start)
 SECTIONS {
     . = 0xC0000000;
