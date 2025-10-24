@@ -1,11 +1,11 @@
 // Font
-#include "../kernel/include/kernel/font/VGA8.h"
+#include <kernel/font/VGA8.h>
 
 // Boot params and memory information
-#include "../kernel/include/kernel/sysparam.h"
+#include <kernel/sysparam.h>
 
 // EFI
-#include "efi.h"
+#include <boot/efi.h>
 
 // https://www.youtube.com/watch?v=mHh2-ixF9Yk&t=1031s
 
@@ -129,9 +129,9 @@ efifilehandle_t filedata = {0};
 
 unsigned long long pml4[512] __attribute__((aligned(PAGE4K))) = {0}; // root
 unsigned long long pdpt[512] __attribute__((aligned(PAGE4K))) = {0}; // root
-unsigned long long pd[512] __attribute__((aligned(PAGE2M))) = {0}; // for memmap
+unsigned long long pd[512] __attribute__((aligned(PAGE4K))) = {0}; // for memmap
 unsigned long long pd1[512] __attribute__((aligned(PAGE4K))) = {0}; // for kernel
-unsigned long long pd2[512] __attribute__((aligned(PAGE2M))) = {0}; // for framebuffer
+unsigned long long pd2[512] __attribute__((aligned(PAGE4K))) = {0}; // for framebuffer
 unsigned long long pt[512] __attribute__((aligned(PAGE4K))) = {0}; // for kernel
 
 void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
