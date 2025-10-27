@@ -1,6 +1,13 @@
 #ifndef _EFI_H
 #define _EFI_H 1
 
+#if defined(__x86_64__)
+#define EFIAPI __attribute__((ms_abi))
+#else
+#define EFIAPI
+#endif
+
+
 // EFI data
 typedef struct efitableheader_t {
     unsigned long long signature;
@@ -30,7 +37,7 @@ typedef struct efitimecap_t {
     unsigned char settozero;
 } efitimecap_t;
 
-typedef unsigned long long (*efigettime_t)(efitime_t* time, efitimecap_t* cap);
+typedef unsigned long long (EFIAPI *efigettime_t)(efitime_t* time, efitimecap_t* cap);
 
 typedef struct efirtservices_t {
     efitableheader_t header;
@@ -80,14 +87,14 @@ typedef enum efialloctype_t {
     efimaxalloctype
 } efialloctype_t;
 
-typedef unsigned long long (*efiallocpages_t)(efialloctype_t type, efimemtype_t memtype, unsigned long long pages, void* mem);
-typedef unsigned long long (*efifreepages_t)(unsigned long long mem, unsigned long long pages);
-typedef unsigned long long (*efihandleprot_t)(void* handle, efiguid_t* prot, void** interface);
-typedef unsigned long long (*efiallocpool_t)(efimemtype_t memtype, unsigned long long size, void** ret);
-typedef unsigned long long (*efifreepool_t)(void* buf);
-typedef unsigned long long (*efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
-typedef unsigned long long (*efigetmemmap_t)(unsigned long long* memmapsize, efimemdesc_t* memmap, unsigned long long* mapkey, unsigned long long* descsize, unsigned int* descversion);
-typedef unsigned long long (*efiexitbootservices_t)(void* imghandle, unsigned long long mapkey);
+typedef unsigned long long (EFIAPI *efiallocpages_t)(efialloctype_t type, efimemtype_t memtype, unsigned long long pages, void* mem);
+typedef unsigned long long (EFIAPI *efifreepages_t)(unsigned long long mem, unsigned long long pages);
+typedef unsigned long long (EFIAPI *efihandleprot_t)(void* handle, efiguid_t* prot, void** interface);
+typedef unsigned long long (EFIAPI *efiallocpool_t)(efimemtype_t memtype, unsigned long long size, void** ret);
+typedef unsigned long long (EFIAPI *efifreepool_t)(void* buf);
+typedef unsigned long long (EFIAPI *efilocprot_t)(efiguid_t* prot, void* registration, void** interface);
+typedef unsigned long long (EFIAPI *efigetmemmap_t)(unsigned long long* memmapsize, efimemdesc_t* memmap, unsigned long long* mapkey, unsigned long long* descsize, unsigned int* descversion);
+typedef unsigned long long (EFIAPI *efiexitbootservices_t)(void* imghandle, unsigned long long mapkey);
 
 typedef struct efibservices_t {
     efitableheader_t header;
@@ -147,8 +154,8 @@ typedef struct efiinputkey_t {
     unsigned short unicodech;
 } efiinputkey_t;
 
-typedef unsigned long long (*efireset_t)(void* this, unsigned char extendedverification);
-typedef unsigned long long (*efireadkeystroke_t)(void* this, efiinputkey_t* key);
+typedef unsigned long long (EFIAPI *efireset_t)(void* this, unsigned char extendedverification);
+typedef unsigned long long (EFIAPI *efireadkeystroke_t)(void* this, efiinputkey_t* key);
 
 typedef struct efisimpletextinput_t {
     efireset_t reset;
@@ -207,8 +214,8 @@ typedef struct efigopmode_t {
     unsigned long long fbsize;
 } efigopmode_t;
 
-typedef unsigned long long (*efiquerymode_t)(void* this, unsigned int modenum, unsigned long long* sizeofinfo, efigopmodeinfo_t** info);
-typedef unsigned long long (*efisetmode_t)(void* this, unsigned int modenum);
+typedef unsigned long long (EFIAPI *efiquerymode_t)(void* this, unsigned int modenum, unsigned long long* sizeofinfo, efigopmodeinfo_t** info);
+typedef unsigned long long (EFIAPI *efisetmode_t)(void* this, unsigned int modenum);
 
 typedef struct efigop_t {
     efiquerymode_t querymode;
@@ -255,10 +262,10 @@ typedef struct efifileinfo_t {
 
 typedef struct efifilehandle_t efifilehandle_t;
 
-typedef unsigned long long (*efifileopen_t)(efifilehandle_t* file, efifilehandle_t** newhandle, unsigned short int* filename, unsigned long long openmode, unsigned long long attr);
-typedef unsigned long long (*efifileclose_t)(efifilehandle_t* file);
-typedef unsigned long long (*efifileread_t)(efifilehandle_t* file, unsigned long long* bufsize, void* buf);
-typedef unsigned long long (*efigetinfo_t)(efifilehandle_t* file, efiguid_t* infotype, unsigned long long* bufsize, void* buf);
+typedef unsigned long long (EFIAPI *efifileopen_t)(efifilehandle_t* file, efifilehandle_t** newhandle, unsigned short int* filename, unsigned long long openmode, unsigned long long attr);
+typedef unsigned long long (EFIAPI *efifileclose_t)(efifilehandle_t* file);
+typedef unsigned long long (EFIAPI *efifileread_t)(efifilehandle_t* file, unsigned long long* bufsize, void* buf);
+typedef unsigned long long (EFIAPI *efigetinfo_t)(efifilehandle_t* file, efiguid_t* infotype, unsigned long long* bufsize, void* buf);
 
 typedef struct efifilehandle_t {
     unsigned long long revision;
@@ -276,7 +283,7 @@ typedef struct efifilehandle_t {
 
 #define SFSGUID {0x964e5b22, 0x6459, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}}
 
-typedef unsigned long long (*efiopenvolume_t)(void* this, efifilehandle_t** root);
+typedef unsigned long long (EFIAPI *efiopenvolume_t)(void* this, efifilehandle_t** root);
 
 typedef struct efisfsprot_t {
     unsigned long long revision;

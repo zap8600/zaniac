@@ -1,7 +1,12 @@
 #ifndef _EFI_H
 #define _EFI_H 1
 
+#if defined(__x86_64__)
 #define EFIAPI __attribute__((ms_abi))
+#else
+#define EFIAPI
+#endif
+
 
 // EFI data
 typedef struct efitableheader_t {
