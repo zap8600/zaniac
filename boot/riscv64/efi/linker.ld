@@ -15,6 +15,13 @@ SECTIONS {
     }
     _text_vsize = _evtext - _text;
     _text_size = _etext - _text;
+    . = ALIGN(4K);
+    _reloc = .;
+    reloc :
+    {
+        *(.reloc)
+        _evreloc = .;
+    }
     .data :
     {
         *(.data)
