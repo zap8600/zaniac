@@ -18,19 +18,6 @@ SECTIONS {
 
     . = ALIGN(4K);
 
-    _reloc = .;
-    reloc :
-    {
-        *(.reloc)
-        _evreloc = .;
-        . = ALIGN(4K);
-        _ereloc = .;
-    }
-    _reloc_vsize = _evreloc - _reloc;
-    _reloc_size = _ereloc - _reloc;
-
-    . = ALIGN(4K);
-
     _data = .;
     .dynamic : { *(.dynamic) }
     . = ALIGN(4K);
@@ -50,6 +37,19 @@ SECTIONS {
     }
     _data_vsize = _evdata - _data;
     _data_size = _edata - _data;
+
+    . = ALIGN(4K);
+
+    _reloc = .;
+    .reloc :
+    {
+        *(.reloc)
+        _evreloc = .;
+        . = ALIGN(4K);
+        _ereloc = .;
+    }
+    _reloc_vsize = _evreloc - _reloc;
+    _reloc_size = _ereloc - _reloc;
 
     . = ALIGN(4K);
 
@@ -77,4 +77,6 @@ SECTIONS {
     .hash : { *(.hash) }
     . = ALIGN(4K);
     .gnu.hash : { *(.gnu.hash) }
+
+    .comment 0 : { *(.comment) }
 }

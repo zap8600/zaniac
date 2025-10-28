@@ -148,10 +148,10 @@ void bootstrap(void) {
         "    call inituefi\n"
         "    ret\n"
         "    .data\n"
-        "dummy: .4byte 0\n"
+        "dummy0: .4byte 0\n"
+        "dummy1: .4byte 0\n"
         "    .section .reloc, \"a\"\n"
-        "label1:\n"
-        "    .4byte dummy-label1\n"
+        "    .4byte dummy1 - dummy0\n"
         "    .4byte 12\n"
         "    .4byte 0\n"
         ".text\n"
@@ -172,46 +172,43 @@ typedef struct elf64rel_t {
 } elf64rel_t;
 
 unsigned long long inituefi(void* image, efisystemtable_t* systab, unsigned long long ldbase, elf64dyn_t* dyn) {
-    long long relsz = 0;
-    long long relent = 0;
-    elf64rel_t* rel = (void*)0;
-    unsigned long long* addr;
-    for(int i = 0; dyn[i].dtag != 0; i++) {
-        switch(dyn[i].dtag) {
-            case 7: {
-                rel = (elf64rel_t*)(dyn[i].dun.dptr + ldbase);
-                break;
-            }
-            case 8: {
-                relsz = dyn[i].dun.dval;
-                break;
-            }
-            case 9: {
-                relent = dyn[i].dun.dval;
-                break;
-            }
-            default: break;
-        }
-    }
-    if(rel && relent) {
-        while(relsz > 0) {
-            if(((rel->rinfo) & 0xffffffff) == 3) {
-                addr = (unsigned long long*)(ldbase + rel->roffset);
-                *addr += ldbase;
-            }
-            rel = (elf64rel_t*)(((char*)rel) + relent);
-            relsz -= relent;
-        }
-    }
+    // long long relsz = 0;
+    // long long relent = 0;
+    // elf64rel_t* rel = (void*)0;
+    // unsigned long long* addr;
+    // for(int i = 0; dyn[i].dtag != 0; i++) {
+    //     switch(dyn[i].dtag) {
+    //         case 7: {
+    //             rel = (elf64rel_t*)(dyn[i].dun.dptr + ldbase);
+    //             break;
+    //         }
+    //         case 8: {
+    //             relsz = dyn[i].dun.dval;
+    //             break;
+    //         }
+    //         case 9: {
+    //             relent = dyn[i].dun.dval;
+    //             break;
+    //         }
+    //         default: break;
+    //     }
+    // }
+    // if(rel && relent) {
+    //     while(relsz > 0) {
+    //         if(((rel->rinfo) & 0xffffffff) == 3) {
+    //             addr = (unsigned long long*)(ldbase + rel->roffset);
+    //             *addr += ldbase;
+    //         }
+    //         rel = (elf64rel_t*)(((char*)rel) + relent);
+    //         relsz -= relent;
+    //     }
+    // }
 
-    unsigned long long status = 0;
+    // unsigned long long status = 0;
 
-    efiguid_t gopguid = GOPGUID;
-    systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
-
-    wstr("Hello, RISC-V world!\n");
+    //wstr("Hello, RISC-V world!\n");
     
-    while(1) {}
+    // while(1) {}
 
-    return 1;
+    return 0;
 }
