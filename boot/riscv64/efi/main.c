@@ -15,37 +15,9 @@ void clearscr() {
 
 unsigned int cx = 0;
 unsigned int cy = 0;
+char* uart = (void*)0x10000000;
 void wchscr(const char c) {
-    if(c == '\n') {
-        cx = 0;
-        if((cy + 16) >= gop->mode->info->vres) {
-            clearscr();
-            cy = 0;
-        } else {
-            cy += 16;
-        }
-    } else {
-        if((gop->mode->info->hres - cx) < 8) {
-            cx = 0;
-            if((cy + 16) >= gop->mode->info->vres) {
-                clearscr();
-                cy = 0;
-            } else {
-                cy += 16;
-            }
-        }
-        for(unsigned int cb = 0; cb < 16; cb++) {
-            const unsigned char ch = VGA8_F16[(c * 16) + cb];
-            for(unsigned char shift = 0; shift < 8; shift++) {
-                if(ch & (0x80 >> shift)) {
-                    gop->mode->fbbase[((cy + cb) * gop->mode->info->pixperscanline) + (cx + shift)] = 0xffffffff;
-                } else {
-                    gop->mode->fbbase[((cy + cb) * gop->mode->info->pixperscanline) + (cx + shift)] = 0x00000000;
-                }
-            }
-        }
-        cx += 8;
-    }
+    *uart = c;
 }
 
 void wstr(const char* s) {
@@ -168,7 +140,7 @@ void bootstrap(void) {
         "    .2byte 0\n"
         "    .4byte 0x40000040\n"
 
-        "    .text"
+        "    .text\n"
         "    .globl _start\n"
         "_start:\n"
         "    lla a2, image_base\n"

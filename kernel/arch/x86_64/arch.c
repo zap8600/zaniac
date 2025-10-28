@@ -3,21 +3,23 @@
 #include <kernel/tty.h>
 
 __attribute__((naked))
-void start() {
+void bootstrap() {
     asm volatile(
-        "movabs $stack_top, %rsp\n"
-        "call kernel_main\n"
-        "cli\n"
-        "1:\n"
-        "hlt\n"
-        "jmp 1b\n"
-        ".section .bss\n"
-        ".align 16\n"
+        "    .globl _start\n"
+        "_start:\n"
+        "    movabs $stack_top, %rsp\n"
+        "    call kernel_main\n"
+        "    cli\n"
+        "    1:\n"
+        "    hlt\n"
+        "    jmp 1b\n"
+        "    .section .bss\n"
+        "    .align 16\n"
         "stack_bottom:\n"
-        ".skip 16384\n"
-        ".global stack_top\n"
+        "    .skip 16384\n"
+        "    .globl stack_top\n"
         "stack_top:\n"
-        ".section .text\n"
+        "    .section .text\n"
     );
 }
 

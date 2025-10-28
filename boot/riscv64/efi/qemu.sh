@@ -1,0 +1,2 @@
+#! /bin/sh
+qemu-system-riscv64 -M virt,acpi=off -drive if=pflash,format=raw,unit=0,file=/usr/share/qemu-efi-riscv64/RISCV_VIRT_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=../../../firmware/RISCV_VIRT_VARS.fd -net none -nographic -drive file=./uefi.img,format=raw,if=virtio
