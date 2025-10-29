@@ -7,6 +7,7 @@
 #define EFIAPI
 #endif
 
+#define EFIERR(a) (0x8000000000000000 | ((unsigned int)a))
 
 // EFI data
 typedef struct efitableheader_t {

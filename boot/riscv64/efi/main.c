@@ -134,9 +134,13 @@ void bootstrap(void) {
         // "_loop_print:\n"
         // "    sb a1, 0(a0)\n" // print character
         // "    bne a1, a0, _loop_print\n" 
+        "    addi sp, sp, -8\n"
+        "    sd ra, 0(sp)\n"
         "    lla a2, image_base\n"
         "    lla a3, _DYNAMIC\n"
         "    call inituefi\n"
+        "    ld ra, 0(sp)\n"
+        "    addi sp, sp, 8\n"
         "    ret\n"
         "    .data\n"
         "dummy0: .4byte 0\n"
@@ -194,7 +198,11 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab, unsigned long
             default: break;
         }
     }
-    if(rel && relent) {
+    if(!rel && (relent == 0)) {
+    } else if(!rel || (relent == 0)) {
+        wchscr(72);
+        return EFIERR(1); // Load error
+    } else {
         while(relsz > 0) {
             if(((rel->rinfo) & 0xffffffff) == 3) {
                 addr = (unsigned long long*)(ldbase + rel->roffset);
@@ -214,9 +222,9 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab, unsigned long
 
     // unsigned long long status = 0;
 
-    // wstr("Hello, RISC-V world!\n");
+    wstr("Hello, RISC-V world!\n");
     
-    while(1) { wchscr(72); }
+    // while(1) { wchscr(72); }
 
     return 0;
 }

@@ -56,6 +56,8 @@ SECTIONS {
     _rodata = .;
     .rela : {
         *(.rela.dyn)
+        *(.rela.data)
+        *(.rela.text)
     }
     . = ALIGN(4K);
     .rodata : {
