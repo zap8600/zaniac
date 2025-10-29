@@ -6,7 +6,7 @@
 
 typedef struct sysparam_t {
     framebufferinfo_t framebufferinfo; // A structure containing information about the (possible) framebuffer given
-    memmarker_t* memory_map; // A pointer to the memory map
+    // memmarker_t* memory_map; // A pointer to the memory map
 } sysparam_t;
 
 #endif

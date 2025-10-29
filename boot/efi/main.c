@@ -4,6 +4,9 @@
 // Boot params and memory information
 #include <kernel/sysparam.h>
 
+// Arch
+#include <boot/arch/arch.h>
+
 // EFI
 #include <boot/efi.h>
 
@@ -119,21 +122,6 @@ typedef struct elf64phdr_t {
 unsigned short int kernelfilename[12] = {'\\', 'z', 'a', 'n', 'i', 'a', 'c', '.', 'e', 'l', 'f', 0};
 efifilehandle_t filedata = {0};
 
-#define PAGE4K (4 * 1024)
-#define PAGE2M (2 * 1024 * 1024)
-#define PAGE1G (1 * 1024 * 1024 * 1024)
-
-#define PAGEPS 0x80 // PS flag
-#define PAGERW 0x2 // Read/Write flag
-#define PAGEP 0x1 // Present flag
-
-unsigned long long pml4[512] __attribute__((aligned(PAGE4K))) = {0}; // root
-unsigned long long pdpt[512] __attribute__((aligned(PAGE4K))) = {0}; // root
-unsigned long long pd[512] __attribute__((aligned(PAGE4K))) = {0}; // for memmap
-unsigned long long pd1[512] __attribute__((aligned(PAGE4K))) = {0}; // for kernel
-unsigned long long pd2[512] __attribute__((aligned(PAGE4K))) = {0}; // for framebuffer
-unsigned long long pt[512] __attribute__((aligned(PAGE4K))) = {0}; // for kernel
-
 void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
     // TODO: Sort the memmap
     efimemdesc_t tempentry = {0};
@@ -157,23 +145,6 @@ void sortmemmap(efimemdesc_t* memmap, unsigned long long amt) {
     }
 }
 
-void outb(unsigned short int port, unsigned char value) {
-    asm volatile("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
-}
-
-unsigned char inb(unsigned short int port) {
-    unsigned char ret;
-    asm volatile("inb %w1, %b0" : "=a"(ret) : "Nd"(port) : "memory");
-    return ret;
-}
-
-#define COM1 0x3f8
-
-void wchcom1(char c) {
-    while(!(inb(COM1 + 5) & 0x20)) {}
-    outb(COM1, c);
-}
-
 void (*write_ch)(char ch) = (void*)0;
 
 void wstr(const char* s) {
@@ -183,24 +154,11 @@ void wstr(const char* s) {
     }
 }
 
-void wstrcom1(const char* s) {
-    char c = 0;
-    while((c = *s++)) {
-        wchcom1(c);
-    }
-}
+#define PAGE4K (4 * 1024)
+#define PAGE2M (2 * 1024 * 1024)
+#define PAGE1G (1 * 1024 * 1024 * 1024)
 
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
-    // Set up SSE
-    __asm__ __volatile__ (
-        "    movq %cr0, %rax\n"
-        "    andb $0xF1, %al\n"
-        "    movq %rax, %cr0\n"
-        "    movq %cr4, %rax\n"
-        "    orw $3 << 9, %ax\n"
-        "    mov %rax, %cr4\n"
-    );
-
     unsigned long long status = 0;
 
     sysparam_t bootparams = {0};
@@ -213,10 +171,10 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         write_ch = wchscr;
         bootparams.framebufferinfo.present = 1;
     } else {
-        write_ch = wchcom1;
+        write_ch = arch_serial_send; // wchcom1;
         bootparams.framebufferinfo.present = 0;
         wstr("Warning: GOP could not be initialized!\n");
-        asm volatile("cli; hlt");
+        // asm volatile("cli; hlt");
     }
 
     efiloadedimageprot_t* lip = (void*)0;
@@ -232,7 +190,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     }
     if(!rootdir) {
         wstr("Error: Failed to open zaniac.elf!\n");
-        while(1) asm volatile("cli; hlt");
+        while(1) arch_halt(); // asm volatile("cli; hlt");
     }
 
     efifilehandle_t* kernelfile = &filedata;
@@ -248,13 +206,25 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     kernelfile->read(kernelfile, &(kernelfileinfo.filesize), kerneldata);
     kernelfile->close(kernelfile);
 
-    bootparams.framebufferinfo.hres = gop->mode->info->hres;
-    bootparams.framebufferinfo.vres = gop->mode->info->vres;
-    bootparams.framebufferinfo.pitch = gop->mode->info->pixperscanline;
-    bootparams.framebufferinfo.size = gop->mode->fbsize;
+    unsigned long long i;
+    if(bootparams.framebufferinfo.present) {
+        bootparams.framebufferinfo.hres = gop->mode->info->hres;
+        bootparams.framebufferinfo.vres = gop->mode->info->vres;
+        bootparams.framebufferinfo.pitch = gop->mode->info->pixperscanline;
+        bootparams.framebufferinfo.size = gop->mode->fbsize;
 
-    if((((unsigned long long)(gop->mode->fbbase)) % PAGE2M)) {
-        wstr("Warning: Framebuffer pointer is not aligned on a 2MB boundary!\n");
+        if((((unsigned long long)(gop->mode->fbbase)) % PAGE2M)) {
+            wstr("Warning: Framebuffer pointer is not aligned on a 2MB boundary!\n");
+        }
+
+        unsigned long long fbpages = (gop->mode->fbsize) / PAGE2M;
+        if((gop->mode->fbsize) % PAGE2M) fbpages++;
+        if(fbpages > 512) {
+            wstr("Warning: Framebuffer pages are larger than a single page directory!\n");
+        }
+        for(i = 0; i < fbpages; i++) {
+            arch_framebuffer_map_2m((((unsigned long long)(gop->mode->fbbase)) + (i * PAGE2M)), i); // pd2[i] = (((unsigned long long)(gop->mode->fbbase)) + (i * PAGE2M)) | (PAGEPS | PAGERW | PAGEP);
+        }
     }
 
     elf64ehdr_t *elf = (elf64ehdr_t*)kerneldata;
@@ -272,7 +242,6 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     unsigned long long ptmarker = 0;
 
-    unsigned long long i;
     for(i = 0, phdr = (elf64phdr_t*)(kerneldata + elf->phoff); i < elf->phnum; i++, phdr = (elf64phdr_t*)(((unsigned char*)phdr) + elf->phentsize)) {
         if(phdr->ptype == PTLOAD) {
             unsigned long long sectionpages = phdr->memsize / PAGE4K;
@@ -285,31 +254,22 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
             memcpy(sectionptr, kerneldata + phdr->offset, phdr->filesize);
             memset(sectionptr + phdr->filesize, 0, phdr->memsize - phdr->filesize);
             for(unsigned long long j = 0; j < sectionpages; j++) {
-                pt[ptmarker++] = ((unsigned long long)(sectionptr + (j * PAGE4K))) | (PAGERW | PAGEP);
+                arch_kernel_map_4k(((unsigned long long)(sectionptr + (j * PAGE4K))), ptmarker++); // pt[ptmarker++] = ((unsigned long long)(sectionptr + (j * PAGE4K))) | (PAGERW | PAGEP);
             }
         }
     }
 
-    unsigned long long fbpages = (gop->mode->fbsize) / PAGE2M;
-    if((gop->mode->fbsize) % PAGE2M) fbpages++;
-    if(fbpages > 512) {
-        wstr("Warning: Framebuffer pages are larger than a single page directory!\n");
-    }
-    for(i = 0; i < fbpages; i++) {
-        pd2[i] = (((unsigned long long)(gop->mode->fbbase)) + (i * PAGE2M)) | (PAGEPS | PAGERW | PAGEP);
-    }
-
-    pd1[0] = ((unsigned long long)&(pt[0])) | (PAGERW | PAGEP);
+    // pd1[0] = ((unsigned long long)&(pt[0])) | (PAGERW | PAGEP);
 
     for(i = 0; i < 512; i++) {
         // Identity map 1GB so our bootloader keeps running 
-        pd[i] = (i * PAGE2M) | (PAGEPS | PAGERW | PAGEP);
+        arch_bootloader_map_2m((i * PAGE2M), i); // pd[i] = (i * PAGE2M) | (PAGEPS | PAGERW | PAGEP);
     }
 
-    pdpt[0] = ((unsigned long long)&(pd[0])) | (PAGERW | PAGEP); // 0GB - 1GB mark for bootloader identity map
-    pdpt[2] = ((unsigned long long)&(pd2[0])) | (PAGERW | PAGEP); // 2GB mark for framebuffer
-    pdpt[3] = ((unsigned long long)&(pd1[0])) | (PAGERW | PAGEP); // 3GB mark for kernel
-    pml4[0] = ((unsigned long long)&(pdpt[0])) | (PAGERW | PAGEP);
+    // pdpt[0] = ((unsigned long long)&(pd[0])) | (PAGERW | PAGEP); // 0GB - 1GB mark for bootloader identity map
+    // pdpt[2] = ((unsigned long long)&(pd2[0])) | (PAGERW | PAGEP); // 2GB mark for framebuffer
+    // pdpt[3] = ((unsigned long long)&(pd1[0])) | (PAGERW | PAGEP); // 3GB mark for kernel
+    // pml4[0] = ((unsigned long long)&(pdpt[0])) | (PAGERW | PAGEP);
 
     // get the initial memory map size
     efimemdesc_t* memmap = (void*)0;
@@ -328,69 +288,69 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long entries = memmapsize / descsize;
 
     systab->bservices->exitbootservices(image, mapkey);
-    asm volatile("movq %0, %%cr3" : : "b"(&(pml4[0])));
+    arch_init(); // asm volatile("cli; movq %0, %%cr3" : : "b"(&(pml4[0])));
 
-    unsigned char firstfound = 0;
-    memmarker_t* previous_marker = (void*)0;
-    memmarker_t* current_marker = (void*)0;
+    // unsigned char firstfound = 0;
+    // memmarker_t* previous_marker = (void*)0;
+    // memmarker_t* current_marker = (void*)0;
 
-    // Sort the memory map in order of physical address
-    sortmemmap(memmap, entries);
-    // Then we start putting in our memory markers
-    for(i = 0; i < entries; i++) {
-        if(memmap[i].physicalstart >= PAGE1G) {
-            wstrcom1("Warning: Exceeded page boundary with address ");
-            wstrcom1(ptrtostr(memmap[i].physicalstart));
-            wstrcom1(" of type ");
-            wstrcom1(ptrtostr((unsigned long long)(memmap[i].type)));
-            wstrcom1(" on index ");
-            wstrcom1(ptrtostr(i));
-            wstrcom1("!\n");
-        }
-        switch(memmap[i].type) {
-            case efireservedmem:
-            case efiloaderdata:
-            case efirtscode:
-            case efirtsdata:
-            case efiunusablemem:
-            case efiacpireclaimmem:
-            case efiacpimemnvs:
-            case efimemmappedio:
-            case efimemmappedioport:
-            case efipalcode:
-            case efipersistmem:
-            case efiunacceptedmem:
-            {
-                break;
-            }
+    // // Sort the memory map in order of physical address
+    // sortmemmap(memmap, entries);
+    // // Then we start putting in our memory markers
+    // for(i = 0; i < entries; i++) {
+    //     if(memmap[i].physicalstart >= PAGE1G) {
+    //         wstrcom1("Warning: Exceeded page boundary with address ");
+    //         wstrcom1(ptrtostr(memmap[i].physicalstart));
+    //         wstrcom1(" of type ");
+    //         wstrcom1(ptrtostr((unsigned long long)(memmap[i].type)));
+    //         wstrcom1(" on index ");
+    //         wstrcom1(ptrtostr(i));
+    //         wstrcom1("!\n");
+    //     }
+    //     switch(memmap[i].type) {
+    //         case efireservedmem:
+    //         case efiloaderdata:
+    //         case efirtscode:
+    //         case efirtsdata:
+    //         case efiunusablemem:
+    //         case efiacpireclaimmem:
+    //         case efiacpimemnvs:
+    //         case efimemmappedio:
+    //         case efimemmappedioport:
+    //         case efipalcode:
+    //         case efipersistmem:
+    //         case efiunacceptedmem:
+    //         {
+    //             break;
+    //         }
 
-            case efibscode:
-            case efibsdata:
-            case eficonvetmem:
-            case efiloadercode:
-            default:
-            {
-                unsigned long long regionsize = (i != (entries - 1))?(memmap[i + 1].physicalstart - memmap[i].physicalstart):((memmap[i].physicalstart + (memmap[i].numofpages * PAGE4K)) - memmap[i].physicalstart);
-                if(regionsize <= sizeof(memmarker_t)) break;
-                if(!firstfound) {
-                    current_marker = (memmarker_t*)(memmap[i].physicalstart);
-                    current_marker->prev_free_addr = current_marker;
-                    current_marker->size = regionsize - sizeof(memmarker_t);
-                    current_marker->last = 0;
-                    bootparams.memory_map = current_marker;
-                    firstfound = 1;
-                } else {
-                    current_marker = (memmarker_t*)(memmap[i].physicalstart);
-                    current_marker->prev_free_addr = previous_marker;
-                    current_marker->size = regionsize - sizeof(memmarker_t);
-                    current_marker->last = 1;
-                    previous_marker->next_free_addr = current_marker;
-                }
-                previous_marker = current_marker;
-                break;
-            }
-        }
-    }
+    //         case efibscode:
+    //         case efibsdata:
+    //         case eficonvetmem:
+    //         case efiloadercode:
+    //         default:
+    //         {
+    //             unsigned long long regionsize = (i != (entries - 1))?(memmap[i + 1].physicalstart - memmap[i].physicalstart):((memmap[i].physicalstart + (memmap[i].numofpages * PAGE4K)) - memmap[i].physicalstart);
+    //             if(regionsize <= sizeof(memmarker_t)) break;
+    //             if(!firstfound) {
+    //                 current_marker = (memmarker_t*)(memmap[i].physicalstart);
+    //                 current_marker->prev_free_addr = current_marker;
+    //                 current_marker->size = regionsize - sizeof(memmarker_t);
+    //                 current_marker->last = 0;
+    //                 bootparams.memory_map = current_marker;
+    //                 firstfound = 1;
+    //             } else {
+    //                 current_marker = (memmarker_t*)(memmap[i].physicalstart);
+    //                 current_marker->prev_free_addr = previous_marker;
+    //                 current_marker->size = regionsize - sizeof(memmarker_t);
+    //                 current_marker->last = 1;
+    //                 previous_marker->next_free_addr = current_marker;
+    //             }
+    //             previous_marker = current_marker;
+    //             break;
+    //         }
+    //     }
+    // }
 
     gop->mode->fbbase = (unsigned int*)0x80000000ULL;
 
