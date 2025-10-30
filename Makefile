@@ -4,7 +4,7 @@ SYSROOT?=$(shell pwd)/sysroot
 DESTDIR:=$(SYSROOT)
 export DESTDIR
 
-.PHONY: clean kernel libc bootloader kernel-headers boot-headers libc-headers
+.PHONY: clean kernel libc bootloader kernel-headers boot-headers libc-headers disk run
 
 sysroot:
 	mkdir -p $(SYSROOT)
@@ -32,3 +32,9 @@ clean:
 	make -C kernel clean
 	make -C libc clean
 	rm -rf sysroot
+
+disk:
+	make -C boot disk
+
+run:
+	make -C boot run

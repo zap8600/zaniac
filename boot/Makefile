@@ -6,7 +6,7 @@ INCLUDEDIR?=/lib/include
 BOOTDIR?=/boot
 LIBDIR?=/lib
 
-.PHONY: install install-bootloader install-headers clean
+.PHONY: install install-bootloader install-headers clean disk
 
 install: install-headers install-bootloader
 
@@ -19,3 +19,6 @@ install-bootloader:
 
 clean:
 	make -C $(PLATFORM) clean
+
+disk:
+	make -C $(PLATFORM) disk

@@ -1,4 +1,5 @@
-#include <boot/efi.h>
+#include <boot/efi/efi.h>
+#include <boot/efi/arch/arch.h>
 
 __attribute__((naked))
 void bootstrap() {

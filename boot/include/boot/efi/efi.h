@@ -1,5 +1,5 @@
-#ifndef _BOOT_EFI_H
-#define _BOOT_EFI_H 1
+#ifndef _BOOT_EFI_EFI_H
+#define _BOOT_EFI_EFI_H 1
 
 #if defined(__x86_64__)
 #define EFIAPI __attribute__((ms_abi))

@@ -1,5 +1,5 @@
-#ifndef _BOOT_ARCH_ARCH_H
-#define _BOOT_ARCH_ARCH_H 1
+#ifndef _BOOT_EFI_ARCH_ARCH_H
+#define _BOOT_EFI_ARCH_ARCH_H 1
 
 void arch_kernel_map_4k(unsigned long long physaddr, unsigned long long index);
 void arch_bootloader_map_2m(unsigned long long physaddr, unsigned long long index);

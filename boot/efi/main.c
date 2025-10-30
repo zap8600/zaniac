@@ -5,10 +5,10 @@
 #include <kernel/sysparam.h>
 
 // Arch
-#include <boot/arch/arch.h>
+#include <boot/efi/arch/arch.h>
 
 // EFI
-#include <boot/efi.h>
+#include <boot/efi/efi.h>
 
 // https://www.youtube.com/watch?v=mHh2-ixF9Yk&t=1031s
 
