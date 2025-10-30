@@ -127,8 +127,8 @@ void bootstrap() {
         "    ld a1, 8(sp)\n"
         "    ld a0, 0(sp)\n"
         "    call inituefi\n"
-        "    ld ra, 16(sp)\n"
         ".exit:\n"
+        "    ld ra, 16(sp)\n"
         "    addi sp, sp, 24\n"
         "    ret\n"
         "    .data\n"
@@ -182,15 +182,15 @@ unsigned long long _relocate(unsigned long long ldbase, elf64dyn_t* dyn) {
         return 0;
     } else if(!rel || (relent == 0)) {
         return EFIERR(1); // Load error
-    }
-
-    while(relsz > 0) {
-        if(((rel->rinfo) & 0xffffffff) == 3) {
-            addr = (unsigned long long*)(ldbase + rel->roffset);
-            *addr += ldbase + rel->raddend;
+    } else {
+        while(relsz > 0) {
+            if(((rel->rinfo) & 0xffffffff) == 3) {
+                addr = (unsigned long long*)(ldbase + rel->roffset);
+                *addr += ldbase + rel->raddend;
+            }
+            rel = (elf64rel_t*)(((char*)rel) + relent);
+            relsz -= relent;
         }
-        rel = (elf64rel_t*)(((char*)rel) + relent);
-        relsz -= relent;
     }
 
     return 0;
@@ -228,11 +228,11 @@ void arch_framebuffer_map_2m(unsigned long long physaddr, unsigned long long ind
 }
 
 void arch_init() {
-    pdpt[0] = &(pd[0]);
-    pdpt[2] = &(pd2[0]);
-    pdpt[3] = &(pd1[0]);
+    pdpt[0] = (unsigned long long)&(pd[0]);
+    pdpt[2] = (unsigned long long)&(pd2[0]);
+    pdpt[3] = (unsigned long long)&(pd1[0]);
 
-    pd[1] = &(pt[0]);
+    pd[1] = (unsigned long long)&(pt[0]);
 
     asm volatile("sfence.vma zero, zero");
 

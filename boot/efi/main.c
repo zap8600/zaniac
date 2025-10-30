@@ -163,6 +163,10 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
 
     sysparam_t bootparams = {0};
 
+    // while(1) {
+    //     arch_serial_send('H');
+    // }
+
     // Setup
     efiguid_t gopguid = GOPGUID;
     status = systab->bservices->locprot(&gopguid, (void*)0, (void**)&gop);
@@ -171,10 +175,17 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         write_ch = wchscr;
         bootparams.framebufferinfo.present = 1;
     } else {
+        arch_serial_send('H');
         write_ch = arch_serial_send; // wchcom1;
         bootparams.framebufferinfo.present = 0;
-        wstr("Warning: GOP could not be initialized!\n");
+        // wstr("Warning: GOP could not be initialized!\n");
         // asm volatile("cli; hlt");
+    }
+
+    arch_serial_send('H');
+
+    while(1) {
+        wstr("Hello, world!\n");
     }
 
     efiloadedimageprot_t* lip = (void*)0;
