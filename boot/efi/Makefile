@@ -5,10 +5,21 @@ INCLUDEDIR?=/lib/include
 BOOTDIR?=/boot
 LIBDIR?=/lib
 
-CFLAGS?=-fpic -fPIC -fshort-wchar -fno-strict-aliasing -ffreestanding -fno-stack-protector -fno-stack-check -mno-red-zone -Wno-builtin-requires-header -Wno-incompatible-library-redeclaration -Wno-long-long
+CFLAGS?=--fshort-wchar -fno-strict-aliasing -ffreestanding -fno-stack-protector -fno-stack-check -Wno-builtin-declaration-mismatch -fpic -fPIC
 CPPFLAGS?=-D__is_efi -I$(DESTDIR)$(INCLUDEDIR)
 LDFLAGS?=-T $(ARCH)/linker.ld -s -Bsymbolic -nostdlib -shared
 LIBS?=
+
+ARCHDIR=arch/$(ARCH)
+
+include $(ARCHDIR)/make.config
+
+CFLAGS:=$(CFLAGS) $(ARCH_CFLAGS)
+CPPFLAGS:=$(CPPFLAGS) $(ARCH_CPPFLAGS)
+
+OBJS=\
+main.o \
+$(ARCH_OBJS) \
 
 .PHONY: install install-efi clean
 

@@ -15,7 +15,7 @@ install-headers:
 	cp -R --preserve=timestamps include/. $(DESTDIR)$(INCLUDEDIR)/.
 
 install-bootloader:
-	make -C $(ARCH)/$(PLATFORM) install
+	make -C $(PLATFORM) install
 
 clean:
-	make -C $(ARCH)/$(PLATFORM) clean
+	make -C $(PLATFORM) clean
