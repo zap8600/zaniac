@@ -58,5 +58,8 @@ disk:
 	dd if=/dev/zero of=./part.img bs=512 count=91669
 	mformat -i ./part.img -h 32 -t 32 -n 64 -c 1
 	mcopy -i ./part.img $(DESTDIR)/boot/efi ::
-	mcopy -i ./part.img $(DESTDIR)/boot/zaniac.elf ::
+#	mcopy -i ./part.img $(DESTDIR)/boot/zaniac.elf ::
 	dd if=./part.img of=./uefi.img bs=512 count=91669 seek=2048 conv=notrunc
+
+run:
+	qemu-system-x86_64 -cpu qemu64 -drive file=uefi.img,if=ide -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log -vnc :1

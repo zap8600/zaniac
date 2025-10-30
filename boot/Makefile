@@ -22,3 +22,6 @@ clean:
 
 disk:
 	make -C $(PLATFORM) disk
+
+run:
+	make -C $(PLATFORM) run
