@@ -175,17 +175,21 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         write_ch = wchscr;
         bootparams.framebufferinfo.present = 1;
     } else {
-        arch_serial_send('H');
+        //arch_serial_send('H');
         write_ch = arch_serial_send; // wchcom1;
         bootparams.framebufferinfo.present = 0;
         // wstr("Warning: GOP could not be initialized!\n");
         // asm volatile("cli; hlt");
     }
 
-    arch_serial_send('H');
+    //arch_serial_send('H');
 
     while(1) {
-        wstr("Hello, world!\n");
+        char* msg = "Hello, world!\n";
+        if(msg[0] == 0) {
+            arch_serial_send('H');
+        }
+        wstr(msg);
     }
 
     efiloadedimageprot_t* lip = (void*)0;
@@ -296,7 +300,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     systab->bservices->allocatepool(efiloaderdata, memmapsize, (void**)&memmap);
     systab->bservices->getmemorymap(&memmapsize, memmap, &mapkey, &descsize, &descversion);
 
-    unsigned long long entries = memmapsize / descsize;
+    // unsigned long long entries = memmapsize / descsize;
 
     systab->bservices->exitbootservices(image, mapkey);
     arch_init(); // asm volatile("cli; movq %0, %%cr3" : : "b"(&(pml4[0])));

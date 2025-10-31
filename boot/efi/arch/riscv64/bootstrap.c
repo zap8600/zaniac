@@ -185,10 +185,12 @@ unsigned long long _relocate(unsigned long long ldbase, elf64dyn_t* dyn) {
     } else {
         while(relsz > 0) {
             if(((rel->rinfo) & 0xffffffff) == 3) {
+                //arch_serial_send('H');
+                //arch_serial_send(' ');
                 addr = (unsigned long long*)(ldbase + rel->roffset);
                 *addr += ldbase + rel->raddend;
             }
-            rel = (elf64rel_t*)(((char*)rel) + relent);
+            rel = (elf64rel_t*)(((char*)rel) + relent); // The (char*) lets the compiler know that this may not be aligned, so it needs to not cause an unaligned load fault
             relsz -= relent;
         }
     }

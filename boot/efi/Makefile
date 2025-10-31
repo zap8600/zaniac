@@ -6,7 +6,7 @@ INCLUDEDIR?=/lib/include
 BOOTDIR?=/boot
 LIBDIR?=/lib
 
-CFLAGS?=-fshort-wchar -fno-strict-aliasing -ffreestanding -fno-stack-protector -fno-stack-check -Wno-builtin-declaration-mismatch -fpic -fPIC
+CFLAGS?=-fpic -fPIC -fshort-wchar -fno-strict-aliasing -ffreestanding -fno-stack-protector -fno-stack-check -Werror-implicit-function-declaration -Wshadow -Wunused -Wall -Werror
 CPPFLAGS?=-D__is_efi -I$(DESTDIR)$(INCLUDEDIR)
 LDFLAGS?=-s -Bsymbolic -shared # --orphan-handling=error
 LIBS?=-nostdlib
