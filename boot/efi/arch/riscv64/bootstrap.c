@@ -153,8 +153,10 @@ typedef struct elf64dyn_t {
 typedef struct elf64rel_t {
     unsigned long long roffset;
     unsigned long long rinfo;
-    signed long long raddend;
+    long long raddend;
 } elf64rel_t;
+
+char msg[] = "Hello, world!\n";
 
 unsigned long long _relocate(unsigned long long ldbase, elf64dyn_t* dyn) {
     long long relsz = 0;
@@ -193,6 +195,12 @@ unsigned long long _relocate(unsigned long long ldbase, elf64dyn_t* dyn) {
             rel = (elf64rel_t*)(((char*)rel) + relent); // The (char*) lets the compiler know that this may not be aligned, so it needs to not cause an unaligned load fault
             relsz -= relent;
         }
+    }
+
+    char c = 0;
+    char* s = msg;
+    while((c = *s++)) {
+        arch_serial_send(c);
     }
 
     return 0;

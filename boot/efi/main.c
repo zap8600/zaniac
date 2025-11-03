@@ -158,6 +158,8 @@ void wstr(const char* s) {
 #define PAGE2M (2 * 1024 * 1024)
 #define PAGE1G (1 * 1024 * 1024 * 1024)
 
+// char* ourmsg = "Hello, world!\n";
+
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long status = 0;
 
@@ -185,11 +187,10 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     //arch_serial_send('H');
 
     while(1) {
-        char* msg = "Hello, world!\n";
-        if(msg[0] == 0) {
-            arch_serial_send('H');
-        }
-        wstr(msg);
+        // if(msg[0] == 0) {
+        //     arch_serial_send('H');
+        // }
+        wstr("Hello, world!\n");
     }
 
     efiloadedimageprot_t* lip = (void*)0;

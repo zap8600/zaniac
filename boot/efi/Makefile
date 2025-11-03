@@ -31,7 +31,6 @@ $(LIBS) \
 .SUFFIXES: .c .o .elf
 
 .c.o:
-	$(info $(OBJS))
 	clang -target $(HOST) -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
 
 boot.elf: $(OBJS) $(ARCHDIR)/linker.ld
