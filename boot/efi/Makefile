@@ -56,13 +56,14 @@ disk:
 	mformat -i ./part.img -h 32 -t 32 -n 64 -c 1
 	mcopy -i ./part.img $(DESTDIR)/boot/efi ::
 	mcopy -i ./part.img $(DESTDIR)/boot/efi/boot ::efi
-#	mcopy -i ./part.img $(DESTDIR)/boot/zaniac.elf ::
+	mcopy -i ./part.img $(DESTDIR)/boot/zaniac.elf ::
 	dd if=./part.img of=./uefi.img bs=512 count=91669 seek=2048 conv=notrunc
 
 run-x86_64:
 	qemu-system-x86_64 -cpu qemu64 -drive file=uefi.img,if=ide -serial file:serial.log -drive if=pflash,format=raw,unit=0,file=../../firmware/OVMF_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=../../firmware/OVMF_VARS.fd -net none -d cpu_reset -D debug.log
 
 run-riscv64:
-	qemu-system-riscv64 -M virt,acpi=off -drive if=pflash,format=raw,unit=0,file=/usr/share/qemu-efi-riscv64/RISCV_VIRT_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=../../firmware/RISCV_VIRT_VARS.fd -net none -nographic -drive file=./uefi.img,format=raw,if=virtio
+#	qemu-system-riscv64 -M virt,acpi=off -drive if=pflash,format=raw,unit=0,file=/usr/share/qemu-efi-riscv64/RISCV_VIRT_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=../../firmware/RISCV_VIRT_VARS.fd -net none -nographic -drive file=./uefi.img,format=raw,if=virtio
+	qemu-system-riscv64 -M virt,acpi=off -drive if=pflash,format=raw,unit=0,file=/usr/share/qemu-efi-riscv64/RISCV_VIRT_CODE.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=../../firmware/RISCV_VIRT_VARS.fd -net none -nographic -s -S -drive file=./uefi.img,format=raw,if=virtio
 
 run: run-$(ARCH)

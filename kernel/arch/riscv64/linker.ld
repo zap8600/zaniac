@@ -1,5 +1,5 @@
 OUTPUT_FORMAT(elf64-littleriscv)
-ENTRY(start)
+ENTRY(_start)
 SECTIONS {
     . = 0xC0000000;
     .text : ALIGN(4K)

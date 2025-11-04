@@ -428,15 +428,6 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         // asm volatile("cli; hlt");
     }
 
-    //arch_serial_send('H');
-
-    while(1) {
-        // if(msg[0] == 0) {
-        //     arch_serial_send('H');
-        // }
-        wstr("Hello, world!\n");
-    }
-
     efiloadedimageprot_t* lip = (void*)0;
     efiguid_t lipguid = LIPGUID;
     systab->bservices->handleprot(image, &lipguid, (void**)&lip);
@@ -721,13 +712,19 @@ void arch_init() {
 
     pd[1] = (unsigned long long)&(pt[0]);
 
-    asm volatile("sfence.vma zero, zero");
+    wstr("Wish us luck!\n");
+
+    // asm volatile("sfence.vma zero, zero");
 
     // TODO: Disable interrupts
 
+    asm volatile("1: j 1b");
+
     asm volatile("csrw satp, %0" : : "r"(((8LL << 60) | (((unsigned long long)&(pdpt[0])) >> 12))));
 
-    asm volatile("sfence.vma zero, zero");
+    // asm volatile("sfence.vma zero, zero");
+
+    wstr("We are still alive!\n");
 }
 
 void arch_halt() {

@@ -1,6 +1,7 @@
 #include <kernel/arch/x86_64/gdt.h>
 #include <kernel/arch/x86_64/idt.h>
 #include <kernel/tty.h>
+#include <kernel/arch/arch.h>
 
 __attribute__((naked))
 void bootstrap() {
