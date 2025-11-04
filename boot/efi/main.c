@@ -204,8 +204,6 @@ typedef struct elf64rel_t {
     signed long long raddend;
 } elf64rel_t;
 
-char msg[] = "Hello, world!\n";
-
 #if defined(__x86_64__)
 unsigned long long _relocate(unsigned long long ldbase, elf64dyn_t* dyn, unsigned long long image __attribute__((unused)), efisystemtable_t* systab __attribute__((unused)))
 #elif defined(__riscv) && (__riscv_xlen == 64)
@@ -252,19 +250,13 @@ unsigned long long _relocate(unsigned long long ldbase, elf64dyn_t* dyn)
         }
     }
 
-    char c = 0;
-    char* s = msg;
-    while((c = *s++)) {
-        arch_serial_send(c);
-    }
-
     return 0;
 }
 
 // https://www.youtube.com/watch?v=mHh2-ixF9Yk&t=1031s
 
 //Screen
-efigop_t* gop = (void*)0;
+efigop_t* gop = (void*)1;
 
 void clearscr() {
     for(unsigned int y = 0; y < gop->mode->info->vres; y++) {
@@ -409,8 +401,6 @@ void wstr(const char* s) {
 #define PAGE2M (2 * 1024 * 1024)
 #define PAGE1G (1 * 1024 * 1024 * 1024)
 
-// char* ourmsg = "Hello, world!\n";
-
 unsigned long long inituefi(void* image, efisystemtable_t* systab) {
     unsigned long long status = 0;
 
@@ -427,11 +417,14 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         gop->setmode(gop, 0);
         write_ch = wchscr;
         bootparams.framebufferinfo.present = 1;
+        clearscr();
     } else {
         //arch_serial_send('H');
         write_ch = arch_serial_send; // wchcom1;
         bootparams.framebufferinfo.present = 0;
-        // wstr("Warning: GOP could not be initialized!\n");
+        wstr("Warning: GOP could not be initialized! Resulted in: ");
+        wstr(ptrtostr(status));
+        wstr("!\n");
         // asm volatile("cli; hlt");
     }
 
@@ -441,7 +434,7 @@ unsigned long long inituefi(void* image, efisystemtable_t* systab) {
         // if(msg[0] == 0) {
         //     arch_serial_send('H');
         // }
-        wstr(msg);
+        wstr("Hello, world!\n");
     }
 
     efiloadedimageprot_t* lip = (void*)0;

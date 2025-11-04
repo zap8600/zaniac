@@ -8,7 +8,7 @@ LIBDIR?=/lib
 
 CFLAGS?=-fpic -fPIC -fshort-wchar -fno-strict-aliasing -ffreestanding -fno-stack-protector -fno-stack-check -Werror-implicit-function-declaration -Wshadow -Wunused -Wall -Werror
 CPPFLAGS?=-D__is_efi -I$(DESTDIR)$(INCLUDEDIR)
-LDFLAGS?=-s -Bsymbolic -shared # --orphan-handling=error
+LDFLAGS?=-s -Bsymbolic -shared --orphan-handling=warn
 LIBS?=-nostdlib
 
 ARCHDIR=arch/$(ARCH)
@@ -36,7 +36,7 @@ boot.elf: $(OBJS) $(ARCHDIR)/linker.ld
 	ld.lld -T $(ARCHDIR)/linker.ld -o $@ $(LINK_LIST)
 
 bootloader: boot.elf
-	llvm-objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .dynstr -j .rel* -j .rela* -j .reloc -O binary boot.elf $(ARCH_BOOT_PREFIX).efi
+	llvm-objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .dynstr -j .rel* -j .rela* -j .reloc -j .rodata -O binary boot.elf $(ARCH_BOOT_PREFIX).efi
 
 clean:
 	rm -f *.o *.elf *.efi *.img *.log $(OBJS)
